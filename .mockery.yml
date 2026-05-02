@@ -1,0 +1,9 @@
+dir: "internal/application/mocks"
+filename: "mock_{{.InterfaceName | snakecase}}.go"
+structname: "Mock{{.InterfaceName}}"
+pkgname: "mocks"
+template: testify
+packages:
+  github.com/gabrielcamargo/tech-challenge/internal/domain/repository:
+    config:
+      all: true
