@@ -113,6 +113,7 @@ func (s *Server) registerRoutes() {
 	protected := v1.Group("", middleware.Auth(s.config.JWTSecret))
 
 	authHandler.RegisterRoutes(v1)
+	orderHandler.RegisterPublicRoutes(v1)
 	customerHandler.RegisterRoutes(protected)
 	vehicleHandler.RegisterRoutes(protected)
 	partHandler.RegisterRoutes(protected)

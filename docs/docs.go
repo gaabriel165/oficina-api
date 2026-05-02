@@ -776,51 +776,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/service-orders/{id}/finish-diagnosis": {
-            "patch": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "service-orders"
-                ],
-                "summary": "Finish diagnosis for a service order",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Service Order ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ServiceOrderResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorResponse"
-                        }
-                    },
-                    "422": {
-                        "description": "Unprocessable Entity",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/service-orders/{id}/finish-execution": {
             "patch": {
                 "security": [
@@ -1114,6 +1069,40 @@ const docTemplate = `{
                     },
                     "422": {
                         "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/service-orders/{id}/status": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "service-orders"
+                ],
+                "summary": "Get the current status of a service order (public)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Service Order ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ServiceOrderStatusResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
                         }
@@ -1836,6 +1825,23 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "vehicle_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ServiceOrderStatusResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/valueobject.OrderStatus"
+                },
+                "total_amount": {
+                    "type": "number"
+                },
+                "updated_at": {
                     "type": "string"
                 }
             }

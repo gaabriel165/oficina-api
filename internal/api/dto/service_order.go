@@ -53,6 +53,22 @@ type ServiceOrderResponse struct {
 	UpdatedAt   time.Time                  `json:"updated_at"`
 }
 
+type ServiceOrderStatusResponse struct {
+	ID          string                  `json:"id"`
+	Status      valueobject.OrderStatus `json:"status"`
+	TotalAmount float64                 `json:"total_amount"`
+	UpdatedAt   time.Time               `json:"updated_at"`
+}
+
+func ToServiceOrderStatusResponse(o *entity.ServiceOrder) ServiceOrderStatusResponse {
+	return ServiceOrderStatusResponse{
+		ID:          o.ID(),
+		Status:      o.Status(),
+		TotalAmount: o.TotalAmount(),
+		UpdatedAt:   o.UpdatedAt(),
+	}
+}
+
 func ToServiceOrderResponse(o *entity.ServiceOrder) ServiceOrderResponse {
 	items := make([]ServiceOrderItemResponse, 0, len(o.Items()))
 	for _, item := range o.Items() {

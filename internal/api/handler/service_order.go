@@ -65,6 +65,27 @@ func (h *ServiceOrderHandler) RegisterRoutes(router *gin.RouterGroup) {
 	router.PATCH("/service-orders/:id/deliver", h.DeliverVehicle)
 }
 
+func (h *ServiceOrderHandler) RegisterPublicRoutes(router *gin.RouterGroup) {
+	router.GET("/service-orders/:id/status", h.GetStatus)
+}
+
+// GetStatus godoc
+// @Summary      Get the current status of a service order (public)
+// @Tags         service-orders
+// @Produce      json
+// @Param        id  path      string  true  "Service Order ID"
+// @Success      200  {object}  dto.ServiceOrderStatusResponse
+// @Failure      404  {object}  response.ErrorResponse
+// @Router       /service-orders/{id}/status [get]
+func (h *ServiceOrderHandler) GetStatus(c *gin.Context) {
+	result, err := h.getUC.Execute(c.Param("id"))
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, dto.ToServiceOrderStatusResponse(result))
+}
+
 // Create godoc
 // @Summary      Create a new service order
 // @Tags         service-orders

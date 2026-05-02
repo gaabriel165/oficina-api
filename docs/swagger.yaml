@@ -208,6 +208,17 @@ definitions:
       vehicle_id:
         type: string
     type: object
+  dto.ServiceOrderStatusResponse:
+    properties:
+      id:
+        type: string
+      status:
+        $ref: '#/definitions/valueobject.OrderStatus'
+      total_amount:
+        type: number
+      updated_at:
+        type: string
+    type: object
   dto.ServiceResponse:
     properties:
       created_at:
@@ -814,34 +825,6 @@ paths:
       summary: Mark vehicle as delivered to customer
       tags:
       - service-orders
-  /service-orders/{id}/finish-diagnosis:
-    patch:
-      parameters:
-      - description: Service Order ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.ServiceOrderResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/response.ErrorResponse'
-        "422":
-          description: Unprocessable Entity
-          schema:
-            $ref: '#/definitions/response.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Finish diagnosis for a service order
-      tags:
-      - service-orders
   /service-orders/{id}/finish-execution:
     patch:
       parameters:
@@ -1028,6 +1011,28 @@ paths:
       security:
       - BearerAuth: []
       summary: Start diagnosis for a service order
+      tags:
+      - service-orders
+  /service-orders/{id}/status:
+    get:
+      parameters:
+      - description: Service Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ServiceOrderStatusResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Get the current status of a service order (public)
       tags:
       - service-orders
   /services:
