@@ -1,0 +1,315 @@
+package handler
+
+import (
+	"net/http"
+
+	"github.com/gabrielcamargo/oficina-api/internal/api/dto"
+	"github.com/gabrielcamargo/oficina-api/internal/api/response"
+	"github.com/gabrielcamargo/oficina-api/internal/application/usecase/serviceorder"
+	"github.com/gin-gonic/gin"
+)
+
+type ServiceOrderHandler struct {
+	createUC     *serviceorder.CreateServiceOrderUseCase
+	startDiagUC  *serviceorder.StartDiagnosisUseCase
+	addServiceUC *serviceorder.AddServiceToOrderUseCase
+	addPartUC    *serviceorder.AddPartToOrderUseCase
+	sendBudgetUC *serviceorder.SendBudgetUseCase
+	approveUC    *serviceorder.ApproveBudgetUseCase
+	rejectUC     *serviceorder.RejectBudgetUseCase
+	finishExecUC *serviceorder.FinishExecutionUseCase
+	deliverUC    *serviceorder.DeliverVehicleUseCase
+	getUC        *serviceorder.GetServiceOrderUseCase
+	listUC       *serviceorder.ListServiceOrdersUseCase
+}
+
+func NewServiceOrderHandler(
+	createUC *serviceorder.CreateServiceOrderUseCase,
+	startDiagUC *serviceorder.StartDiagnosisUseCase,
+	addServiceUC *serviceorder.AddServiceToOrderUseCase,
+	addPartUC *serviceorder.AddPartToOrderUseCase,
+	sendBudgetUC *serviceorder.SendBudgetUseCase,
+	approveUC *serviceorder.ApproveBudgetUseCase,
+	rejectUC *serviceorder.RejectBudgetUseCase,
+	finishExecUC *serviceorder.FinishExecutionUseCase,
+	deliverUC *serviceorder.DeliverVehicleUseCase,
+	getUC *serviceorder.GetServiceOrderUseCase,
+	listUC *serviceorder.ListServiceOrdersUseCase,
+) *ServiceOrderHandler {
+	return &ServiceOrderHandler{
+		createUC:     createUC,
+		startDiagUC:  startDiagUC,
+		addServiceUC: addServiceUC,
+		addPartUC:    addPartUC,
+		sendBudgetUC: sendBudgetUC,
+		approveUC:    approveUC,
+		rejectUC:     rejectUC,
+		finishExecUC: finishExecUC,
+		deliverUC:    deliverUC,
+		getUC:        getUC,
+		listUC:       listUC,
+	}
+}
+
+func (h *ServiceOrderHandler) RegisterRoutes(router *gin.RouterGroup) {
+	router.POST("/service-orders", h.Create)
+	router.GET("/service-orders", h.List)
+	router.GET("/service-orders/:id", h.Get)
+	router.POST("/service-orders/:id/services", h.AddService)
+	router.POST("/service-orders/:id/parts", h.AddPart)
+	router.PATCH("/service-orders/:id/start-diagnosis", h.StartDiagnosis)
+	router.PATCH("/service-orders/:id/send-budget", h.SendBudget)
+	router.PATCH("/service-orders/:id/approve-budget", h.ApproveBudget)
+	router.PATCH("/service-orders/:id/reject-budget", h.RejectBudget)
+	router.PATCH("/service-orders/:id/finish-execution", h.FinishExecution)
+	router.PATCH("/service-orders/:id/deliver", h.DeliverVehicle)
+}
+
+// Create godoc
+// @Summary      Create a new service order
+// @Tags         service-orders
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        body  body      dto.CreateServiceOrderRequest  true  "Service order data"
+// @Success      201   {object}  dto.ServiceOrderResponse
+// @Failure      400   {object}  response.ErrorResponse
+// @Failure      404   {object}  response.ErrorResponse
+// @Router       /service-orders [post]
+func (h *ServiceOrderHandler) Create(c *gin.Context) {
+	var req dto.CreateServiceOrderRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	result, err := h.createUC.Execute(serviceorder.CreateServiceOrderInput{
+		CustomerID: req.CustomerID,
+		VehicleID:  req.VehicleID,
+		Notes:      req.Notes,
+	})
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	c.JSON(http.StatusCreated, dto.ToServiceOrderResponse(result))
+}
+
+// Get godoc
+// @Summary      Get a service order by ID
+// @Tags         service-orders
+// @Security     BearerAuth
+// @Produce      json
+// @Param        id  path      string  true  "Service Order ID"
+// @Success      200  {object}  dto.ServiceOrderResponse
+// @Failure      404  {object}  response.ErrorResponse
+// @Router       /service-orders/{id} [get]
+func (h *ServiceOrderHandler) Get(c *gin.Context) {
+	result, err := h.getUC.Execute(c.Param("id"))
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, dto.ToServiceOrderResponse(result))
+}
+
+// List godoc
+// @Summary      List all service orders
+// @Tags         service-orders
+// @Security     BearerAuth
+// @Produce      json
+// @Success      200  {array}   dto.ServiceOrderResponse
+// @Router       /service-orders [get]
+func (h *ServiceOrderHandler) List(c *gin.Context) {
+	results, err := h.listUC.Execute()
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	responses := make([]dto.ServiceOrderResponse, 0, len(results))
+	for _, r := range results {
+		responses = append(responses, dto.ToServiceOrderResponse(r))
+	}
+	c.JSON(http.StatusOK, responses)
+}
+
+// StartDiagnosis godoc
+// @Summary      Start diagnosis for a service order
+// @Tags         service-orders
+// @Security     BearerAuth
+// @Produce      json
+// @Param        id  path      string  true  "Service Order ID"
+// @Success      200  {object}  dto.ServiceOrderResponse
+// @Failure      404  {object}  response.ErrorResponse
+// @Failure      422  {object}  response.ErrorResponse
+// @Router       /service-orders/{id}/start-diagnosis [patch]
+func (h *ServiceOrderHandler) StartDiagnosis(c *gin.Context) {
+	result, err := h.startDiagUC.Execute(c.Param("id"))
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, dto.ToServiceOrderResponse(result))
+}
+
+// AddService godoc
+// @Summary      Add a service to a service order
+// @Tags         service-orders
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        id    path      string                       true  "Service Order ID"
+// @Param        body  body      dto.AddServiceToOrderRequest true  "Service data"
+// @Success      200   {object}  dto.ServiceOrderResponse
+// @Failure      400   {object}  response.ErrorResponse
+// @Failure      404   {object}  response.ErrorResponse
+// @Router       /service-orders/{id}/services [post]
+func (h *ServiceOrderHandler) AddService(c *gin.Context) {
+	var req dto.AddServiceToOrderRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	result, err := h.addServiceUC.Execute(serviceorder.AddServiceToOrderInput{
+		OrderID:   c.Param("id"),
+		ServiceID: req.ServiceID,
+	})
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.ToServiceOrderResponse(result))
+}
+
+// AddPart godoc
+// @Summary      Add a part to a service order
+// @Tags         service-orders
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        id    path      string                    true  "Service Order ID"
+// @Param        body  body      dto.AddPartToOrderRequest true  "Part data"
+// @Success      200   {object}  dto.ServiceOrderResponse
+// @Failure      400   {object}  response.ErrorResponse
+// @Failure      404   {object}  response.ErrorResponse
+// @Failure      422   {object}  response.ErrorResponse
+// @Router       /service-orders/{id}/parts [post]
+func (h *ServiceOrderHandler) AddPart(c *gin.Context) {
+	var req dto.AddPartToOrderRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	result, err := h.addPartUC.Execute(serviceorder.AddPartToOrderInput{
+		OrderID:  c.Param("id"),
+		PartID:   req.PartID,
+		Quantity: req.Quantity,
+	})
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.ToServiceOrderResponse(result))
+}
+
+
+// SendBudget godoc
+// @Summary      Send budget to customer for approval
+// @Tags         service-orders
+// @Security     BearerAuth
+// @Produce      json
+// @Param        id  path      string  true  "Service Order ID"
+// @Success      200  {object}  dto.ServiceOrderResponse
+// @Failure      404  {object}  response.ErrorResponse
+// @Failure      422  {object}  response.ErrorResponse
+// @Router       /service-orders/{id}/send-budget [patch]
+func (h *ServiceOrderHandler) SendBudget(c *gin.Context) {
+	result, err := h.sendBudgetUC.Execute(c.Param("id"))
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, dto.ToServiceOrderResponse(result))
+}
+
+// ApproveBudget godoc
+// @Summary      Approve the budget and start execution
+// @Tags         service-orders
+// @Security     BearerAuth
+// @Produce      json
+// @Param        id  path      string  true  "Service Order ID"
+// @Success      200  {object}  dto.ServiceOrderResponse
+// @Failure      404  {object}  response.ErrorResponse
+// @Failure      422  {object}  response.ErrorResponse
+// @Router       /service-orders/{id}/approve-budget [patch]
+func (h *ServiceOrderHandler) ApproveBudget(c *gin.Context) {
+	result, err := h.approveUC.Execute(c.Param("id"))
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, dto.ToServiceOrderResponse(result))
+}
+
+// RejectBudget godoc
+// @Summary      Reject the budget and cancel the order
+// @Tags         service-orders
+// @Security     BearerAuth
+// @Produce      json
+// @Param        id  path      string  true  "Service Order ID"
+// @Success      200  {object}  dto.ServiceOrderResponse
+// @Failure      404  {object}  response.ErrorResponse
+// @Failure      422  {object}  response.ErrorResponse
+// @Router       /service-orders/{id}/reject-budget [patch]
+func (h *ServiceOrderHandler) RejectBudget(c *gin.Context) {
+	result, err := h.rejectUC.Execute(c.Param("id"))
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, dto.ToServiceOrderResponse(result))
+}
+
+// FinishExecution godoc
+// @Summary      Mark execution as finished
+// @Tags         service-orders
+// @Security     BearerAuth
+// @Produce      json
+// @Param        id  path      string  true  "Service Order ID"
+// @Success      200  {object}  dto.ServiceOrderResponse
+// @Failure      404  {object}  response.ErrorResponse
+// @Failure      422  {object}  response.ErrorResponse
+// @Router       /service-orders/{id}/finish-execution [patch]
+func (h *ServiceOrderHandler) FinishExecution(c *gin.Context) {
+	result, err := h.finishExecUC.Execute(c.Param("id"))
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, dto.ToServiceOrderResponse(result))
+}
+
+// DeliverVehicle godoc
+// @Summary      Mark vehicle as delivered to customer
+// @Tags         service-orders
+// @Security     BearerAuth
+// @Produce      json
+// @Param        id  path      string  true  "Service Order ID"
+// @Success      200  {object}  dto.ServiceOrderResponse
+// @Failure      404  {object}  response.ErrorResponse
+// @Failure      422  {object}  response.ErrorResponse
+// @Router       /service-orders/{id}/deliver [patch]
+func (h *ServiceOrderHandler) DeliverVehicle(c *gin.Context) {
+	result, err := h.deliverUC.Execute(c.Param("id"))
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, dto.ToServiceOrderResponse(result))
+}
