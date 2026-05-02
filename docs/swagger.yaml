@@ -1,0 +1,1290 @@
+basePath: /api/v1
+definitions:
+  dto.AddPartToOrderRequest:
+    properties:
+      part_id:
+        type: string
+      quantity:
+        type: integer
+    required:
+    - part_id
+    - quantity
+    type: object
+  dto.AddServiceToOrderRequest:
+    properties:
+      service_id:
+        type: string
+    required:
+    - service_id
+    type: object
+  dto.CreateCustomerRequest:
+    properties:
+      document:
+        type: string
+      email:
+        type: string
+      name:
+        type: string
+      phone:
+        type: string
+    required:
+    - document
+    - email
+    - name
+    - phone
+    type: object
+  dto.CreatePartRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      stock_quantity:
+        minimum: 0
+        type: integer
+      unit_price:
+        type: number
+    required:
+    - name
+    - unit_price
+    type: object
+  dto.CreateServiceOrderRequest:
+    properties:
+      customer_id:
+        type: string
+      notes:
+        type: string
+      vehicle_id:
+        type: string
+    required:
+    - customer_id
+    - vehicle_id
+    type: object
+  dto.CreateServiceRequest:
+    properties:
+      description:
+        type: string
+      estimated_minutes:
+        type: integer
+      labor_price:
+        type: number
+      name:
+        type: string
+    required:
+    - estimated_minutes
+    - labor_price
+    - name
+    type: object
+  dto.CreateUserRequest:
+    properties:
+      email:
+        type: string
+      password:
+        minLength: 6
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  dto.CreateVehicleRequest:
+    properties:
+      brand:
+        type: string
+      customer_id:
+        type: string
+      model:
+        type: string
+      plate:
+        type: string
+      year:
+        type: integer
+    required:
+    - brand
+    - customer_id
+    - model
+    - plate
+    - year
+    type: object
+  dto.CustomerResponse:
+    properties:
+      created_at:
+        type: string
+      document:
+        type: string
+      document_type:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      phone:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  dto.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  dto.PartResponse:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      stock_quantity:
+        type: integer
+      unit_price:
+        type: number
+      updated_at:
+        type: string
+    type: object
+  dto.ServiceOrderItemResponse:
+    properties:
+      id:
+        type: string
+      labor_price:
+        type: number
+      service_id:
+        type: string
+      service_name:
+        type: string
+    type: object
+  dto.ServiceOrderPartResponse:
+    properties:
+      id:
+        type: string
+      part_id:
+        type: string
+      part_name:
+        type: string
+      quantity:
+        type: integer
+      total:
+        type: number
+      unit_price:
+        type: number
+    type: object
+  dto.ServiceOrderResponse:
+    properties:
+      created_at:
+        type: string
+      customer_id:
+        type: string
+      finished_at:
+        type: string
+      id:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/dto.ServiceOrderItemResponse'
+        type: array
+      notes:
+        type: string
+      parts:
+        items:
+          $ref: '#/definitions/dto.ServiceOrderPartResponse'
+        type: array
+      started_at:
+        type: string
+      status:
+        $ref: '#/definitions/valueobject.OrderStatus'
+      total_amount:
+        type: number
+      updated_at:
+        type: string
+      vehicle_id:
+        type: string
+    type: object
+  dto.ServiceResponse:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      estimated_minutes:
+        type: integer
+      id:
+        type: string
+      labor_price:
+        type: number
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  dto.TokenResponse:
+    properties:
+      token:
+        type: string
+    type: object
+  dto.UpdateCustomerRequest:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      phone:
+        type: string
+    required:
+    - email
+    - name
+    - phone
+    type: object
+  dto.UpdatePartRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      unit_price:
+        type: number
+    required:
+    - name
+    - unit_price
+    type: object
+  dto.UpdateServiceRequest:
+    properties:
+      description:
+        type: string
+      estimated_minutes:
+        type: integer
+      labor_price:
+        type: number
+      name:
+        type: string
+    required:
+    - estimated_minutes
+    - labor_price
+    - name
+    type: object
+  dto.UpdateStockRequest:
+    properties:
+      quantity:
+        type: integer
+    required:
+    - quantity
+    type: object
+  dto.UpdateVehicleRequest:
+    properties:
+      brand:
+        type: string
+      model:
+        type: string
+      year:
+        type: integer
+    required:
+    - brand
+    - model
+    - year
+    type: object
+  dto.VehicleResponse:
+    properties:
+      brand:
+        type: string
+      created_at:
+        type: string
+      customer_id:
+        type: string
+      id:
+        type: string
+      model:
+        type: string
+      plate:
+        type: string
+      updated_at:
+        type: string
+      year:
+        type: integer
+    type: object
+  response.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  valueobject.OrderStatus:
+    enum:
+    - received
+    - in_diagnosis
+    - waiting_approval
+    - in_execution
+    - finished
+    - delivered
+    - cancelled
+    type: string
+    x-enum-varnames:
+    - OrderStatusReceived
+    - OrderStatusInDiagnosis
+    - OrderStatusWaitingApproval
+    - OrderStatusInExecution
+    - OrderStatusFinished
+    - OrderStatusDelivered
+    - OrderStatusCancelled
+host: localhost:8080
+info:
+  contact: {}
+  description: 'API for managing a mechanical workshop: service orders, customers,
+    vehicles, parts and services.'
+  title: Tech Challenge — Oficina Mecânica API
+  version: "1.0"
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Login credentials
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.TokenResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Authenticate user and get JWT token
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: User credentials
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Register a new user
+      tags:
+      - auth
+  /customers:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.CustomerResponse'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List all customers
+      tags:
+      - customers
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Customer data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateCustomerRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.CustomerResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new customer
+      tags:
+      - customers
+  /customers/{id}:
+    delete:
+      parameters:
+      - description: Customer ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a customer
+      tags:
+      - customers
+    get:
+      parameters:
+      - description: Customer ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.CustomerResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a customer by ID
+      tags:
+      - customers
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Customer ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Customer data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateCustomerRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.CustomerResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a customer
+      tags:
+      - customers
+  /parts:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.PartResponse'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List all parts
+      tags:
+      - parts
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Part data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreatePartRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.PartResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new part
+      tags:
+      - parts
+  /parts/{id}:
+    delete:
+      parameters:
+      - description: Part ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a part
+      tags:
+      - parts
+    get:
+      parameters:
+      - description: Part ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.PartResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a part by ID
+      tags:
+      - parts
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Part ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Part data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdatePartRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.PartResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a part
+      tags:
+      - parts
+  /parts/{id}/stock:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Part ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Stock data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateStockRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.PartResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Add stock quantity to a part
+      tags:
+      - parts
+  /service-orders:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.ServiceOrderResponse'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List all service orders
+      tags:
+      - service-orders
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Service order data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateServiceOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.ServiceOrderResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new service order
+      tags:
+      - service-orders
+  /service-orders/{id}:
+    get:
+      parameters:
+      - description: Service Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ServiceOrderResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a service order by ID
+      tags:
+      - service-orders
+  /service-orders/{id}/approve-budget:
+    patch:
+      parameters:
+      - description: Service Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ServiceOrderResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Approve the budget and start execution
+      tags:
+      - service-orders
+  /service-orders/{id}/deliver:
+    patch:
+      parameters:
+      - description: Service Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ServiceOrderResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Mark vehicle as delivered to customer
+      tags:
+      - service-orders
+  /service-orders/{id}/finish-diagnosis:
+    patch:
+      parameters:
+      - description: Service Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ServiceOrderResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Finish diagnosis for a service order
+      tags:
+      - service-orders
+  /service-orders/{id}/finish-execution:
+    patch:
+      parameters:
+      - description: Service Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ServiceOrderResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Mark execution as finished
+      tags:
+      - service-orders
+  /service-orders/{id}/parts:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Service Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Part data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.AddPartToOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ServiceOrderResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Add a part to a service order
+      tags:
+      - service-orders
+  /service-orders/{id}/reject-budget:
+    patch:
+      parameters:
+      - description: Service Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ServiceOrderResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Reject the budget and cancel the order
+      tags:
+      - service-orders
+  /service-orders/{id}/send-budget:
+    patch:
+      parameters:
+      - description: Service Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ServiceOrderResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Send budget to customer for approval
+      tags:
+      - service-orders
+  /service-orders/{id}/services:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Service Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Service data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.AddServiceToOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ServiceOrderResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Add a service to a service order
+      tags:
+      - service-orders
+  /service-orders/{id}/start-diagnosis:
+    patch:
+      parameters:
+      - description: Service Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ServiceOrderResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Start diagnosis for a service order
+      tags:
+      - service-orders
+  /services:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.ServiceResponse'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List all services
+      tags:
+      - services
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Service data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateServiceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.ServiceResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new service
+      tags:
+      - services
+  /services/{id}:
+    delete:
+      parameters:
+      - description: Service ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a service
+      tags:
+      - services
+    get:
+      parameters:
+      - description: Service ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ServiceResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a service by ID
+      tags:
+      - services
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Service ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Service data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateServiceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ServiceResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a service
+      tags:
+      - services
+  /vehicles:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.VehicleResponse'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List all vehicles
+      tags:
+      - vehicles
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Vehicle data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateVehicleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.VehicleResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new vehicle
+      tags:
+      - vehicles
+  /vehicles/{id}:
+    delete:
+      parameters:
+      - description: Vehicle ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a vehicle
+      tags:
+      - vehicles
+    get:
+      parameters:
+      - description: Vehicle ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.VehicleResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a vehicle by ID
+      tags:
+      - vehicles
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Vehicle ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Vehicle data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateVehicleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.VehicleResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a vehicle
+      tags:
+      - vehicles
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
