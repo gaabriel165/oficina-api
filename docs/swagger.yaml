@@ -151,6 +151,15 @@ definitions:
       updated_at:
         type: string
     type: object
+  dto.ServiceMetricRowResponse:
+    properties:
+      avg_minutes:
+        type: number
+      completed_orders:
+        type: integer
+      service_name:
+        type: string
+    type: object
   dto.ServiceOrderItemResponse:
     properties:
       id:
@@ -161,6 +170,15 @@ definitions:
         type: string
       service_name:
         type: string
+    type: object
+  dto.ServiceOrderMetricsResponse:
+    properties:
+      by_service:
+        items:
+          $ref: '#/definitions/dto.ServiceMetricRowResponse'
+        type: array
+      overall_avg_minutes:
+        type: number
     type: object
   dto.ServiceOrderPartResponse:
     properties:
@@ -1033,6 +1051,20 @@ paths:
           schema:
             $ref: '#/definitions/response.ErrorResponse'
       summary: Get the current status of a service order (public)
+      tags:
+      - service-orders
+  /service-orders/metrics:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ServiceOrderMetricsResponse'
+      security:
+      - BearerAuth: []
+      summary: Get average execution time metrics for service orders
       tags:
       - service-orders
   /services:

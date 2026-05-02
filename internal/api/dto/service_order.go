@@ -53,6 +53,17 @@ type ServiceOrderResponse struct {
 	UpdatedAt   time.Time                  `json:"updated_at"`
 }
 
+type ServiceMetricRowResponse struct {
+	ServiceName     string  `json:"service_name"`
+	AvgMinutes      float64 `json:"avg_minutes"`
+	CompletedOrders int     `json:"completed_orders"`
+}
+
+type ServiceOrderMetricsResponse struct {
+	OverallAvgMinutes float64                      `json:"overall_avg_minutes"`
+	ByService         []ServiceMetricRowResponse   `json:"by_service"`
+}
+
 type ServiceOrderStatusResponse struct {
 	ID          string                  `json:"id"`
 	Status      valueobject.OrderStatus `json:"status"`

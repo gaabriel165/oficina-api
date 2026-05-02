@@ -21,6 +21,7 @@ type ServiceOrderHandler struct {
 	deliverUC    *serviceorder.DeliverVehicleUseCase
 	getUC        *serviceorder.GetServiceOrderUseCase
 	listUC       *serviceorder.ListServiceOrdersUseCase
+	metricsUC    *serviceorder.GetExecutionMetricsUseCase
 }
 
 func NewServiceOrderHandler(
@@ -35,6 +36,7 @@ func NewServiceOrderHandler(
 	deliverUC *serviceorder.DeliverVehicleUseCase,
 	getUC *serviceorder.GetServiceOrderUseCase,
 	listUC *serviceorder.ListServiceOrdersUseCase,
+	metricsUC *serviceorder.GetExecutionMetricsUseCase,
 ) *ServiceOrderHandler {
 	return &ServiceOrderHandler{
 		createUC:     createUC,
@@ -48,10 +50,12 @@ func NewServiceOrderHandler(
 		deliverUC:    deliverUC,
 		getUC:        getUC,
 		listUC:       listUC,
+		metricsUC:    metricsUC,
 	}
 }
 
 func (h *ServiceOrderHandler) RegisterRoutes(router *gin.RouterGroup) {
+	router.GET("/service-orders/metrics", h.GetMetrics)
 	router.POST("/service-orders", h.Create)
 	router.GET("/service-orders", h.List)
 	router.GET("/service-orders/:id", h.Get)
@@ -67,6 +71,35 @@ func (h *ServiceOrderHandler) RegisterRoutes(router *gin.RouterGroup) {
 
 func (h *ServiceOrderHandler) RegisterPublicRoutes(router *gin.RouterGroup) {
 	router.GET("/service-orders/:id/status", h.GetStatus)
+}
+
+// GetMetrics godoc
+// @Summary      Get average execution time metrics for service orders
+// @Tags         service-orders
+// @Security     BearerAuth
+// @Produce      json
+// @Success      200  {object}  dto.ServiceOrderMetricsResponse
+// @Router       /service-orders/metrics [get]
+func (h *ServiceOrderHandler) GetMetrics(c *gin.Context) {
+	result, err := h.metricsUC.Execute()
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	byService := make([]dto.ServiceMetricRowResponse, 0, len(result.ByService))
+	for _, row := range result.ByService {
+		byService = append(byService, dto.ServiceMetricRowResponse{
+			ServiceName:     row.ServiceName,
+			AvgMinutes:      row.AvgMinutes,
+			CompletedOrders: row.CompletedOrders,
+		})
+	}
+
+	c.JSON(http.StatusOK, dto.ServiceOrderMetricsResponse{
+		OverallAvgMinutes: result.OverallAvgMinutes,
+		ByService:         byService,
+	})
 }
 
 // GetStatus godoc

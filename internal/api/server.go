@@ -104,6 +104,7 @@ func (s *Server) registerRoutes() {
 		serviceorder.NewDeliverVehicleUseCase(orderRepo),
 		serviceorder.NewGetServiceOrderUseCase(orderRepo),
 		serviceorder.NewListServiceOrdersUseCase(orderRepo),
+		serviceorder.NewGetExecutionMetricsUseCase(orderRepo),
 	)
 
 	s.router.GET("/health", func(ctx *gin.Context) { ctx.Status(200) })

@@ -647,6 +647,30 @@ const docTemplate = `{
                 }
             }
         },
+        "/service-orders/metrics": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "service-orders"
+                ],
+                "summary": "Get average execution time metrics for service orders",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ServiceOrderMetricsResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/service-orders/{id}": {
             "get": {
                 "security": [
@@ -1742,6 +1766,20 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.ServiceMetricRowResponse": {
+            "type": "object",
+            "properties": {
+                "avg_minutes": {
+                    "type": "number"
+                },
+                "completed_orders": {
+                    "type": "integer"
+                },
+                "service_name": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.ServiceOrderItemResponse": {
             "type": "object",
             "properties": {
@@ -1756,6 +1794,20 @@ const docTemplate = `{
                 },
                 "service_name": {
                     "type": "string"
+                }
+            }
+        },
+        "dto.ServiceOrderMetricsResponse": {
+            "type": "object",
+            "properties": {
+                "by_service": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.ServiceMetricRowResponse"
+                    }
+                },
+                "overall_avg_minutes": {
+                    "type": "number"
                 }
             }
         },

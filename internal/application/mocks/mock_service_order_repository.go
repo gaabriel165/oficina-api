@@ -6,6 +6,7 @@ package mocks
 
 import (
 	"github.com/gabrielcamargo/oficina-api/internal/domain/entity"
+	"github.com/gabrielcamargo/oficina-api/internal/domain/repository"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -34,6 +35,58 @@ type MockServiceOrderRepository_Expecter struct {
 
 func (_m *MockServiceOrderRepository) EXPECT() *MockServiceOrderRepository_Expecter {
 	return &MockServiceOrderRepository_Expecter{mock: &_m.Mock}
+}
+
+// GetExecutionMetrics provides a mock function for the type MockServiceOrderRepository
+func (_mock *MockServiceOrderRepository) GetExecutionMetrics() (*repository.ExecutionMetrics, error) {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetExecutionMetrics")
+	}
+
+	var r0 *repository.ExecutionMetrics
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func() (*repository.ExecutionMetrics, error)); ok {
+		return returnFunc()
+	}
+	if returnFunc, ok := ret.Get(0).(func() *repository.ExecutionMetrics); ok {
+		r0 = returnFunc()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*repository.ExecutionMetrics)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func() error); ok {
+		r1 = returnFunc()
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockServiceOrderRepository_GetExecutionMetrics_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetExecutionMetrics'
+type MockServiceOrderRepository_GetExecutionMetrics_Call struct {
+	*mock.Call
+}
+
+func (_e *MockServiceOrderRepository_Expecter) GetExecutionMetrics() *MockServiceOrderRepository_GetExecutionMetrics_Call {
+	return &MockServiceOrderRepository_GetExecutionMetrics_Call{Call: _e.mock.On("GetExecutionMetrics")}
+}
+
+func (_c *MockServiceOrderRepository_GetExecutionMetrics_Call) Run(run func()) *MockServiceOrderRepository_GetExecutionMetrics_Call {
+	_c.Call.Run(func(args mock.Arguments) { run() })
+	return _c
+}
+
+func (_c *MockServiceOrderRepository_GetExecutionMetrics_Call) Return(metrics *repository.ExecutionMetrics, err error) *MockServiceOrderRepository_GetExecutionMetrics_Call {
+	_c.Call.Return(metrics, err)
+	return _c
+}
+
+func (_c *MockServiceOrderRepository_GetExecutionMetrics_Call) RunAndReturn(run func() (*repository.ExecutionMetrics, error)) *MockServiceOrderRepository_GetExecutionMetrics_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Create provides a mock function for the type MockServiceOrderRepository

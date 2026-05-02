@@ -70,3 +70,47 @@ func (r *GormServiceOrderRepository) FindAll() ([]*entity.ServiceOrder, error) {
 	}
 	return orders, nil
 }
+
+func (r *GormServiceOrderRepository) GetExecutionMetrics() (*domainrepo.ExecutionMetrics, error) {
+	var overallAvg float64
+	r.db.Raw(`
+		SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (finished_at - started_at)) / 60), 0)
+		FROM service_orders
+		WHERE finished_at IS NOT NULL AND started_at IS NOT NULL AND deleted_at IS NULL
+	`).Scan(&overallAvg)
+
+	type row struct {
+		ServiceName     string  `gorm:"column:service_name"`
+		AvgMinutes      float64 `gorm:"column:avg_minutes"`
+		CompletedOrders int     `gorm:"column:completed_orders"`
+	}
+
+	var rows []row
+	if err := r.db.Raw(`
+		SELECT
+			s.name AS service_name,
+			COALESCE(AVG(EXTRACT(EPOCH FROM (so.finished_at - so.started_at)) / 60), 0) AS avg_minutes,
+			COUNT(*) AS completed_orders
+		FROM service_orders so
+		JOIN service_order_items soi ON soi.service_order_id = so.id
+		JOIN services s ON s.id = soi.service_id
+		WHERE so.finished_at IS NOT NULL AND so.started_at IS NOT NULL AND so.deleted_at IS NULL
+		GROUP BY s.id, s.name
+		ORDER BY s.name
+	`).Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	metrics := &domainrepo.ExecutionMetrics{
+		OverallAvgMinutes: overallAvg,
+		ByService:         make([]domainrepo.ServiceMetricRow, 0, len(rows)),
+	}
+	for _, r := range rows {
+		metrics.ByService = append(metrics.ByService, domainrepo.ServiceMetricRow{
+			ServiceName:     r.ServiceName,
+			AvgMinutes:      r.AvgMinutes,
+			CompletedOrders: r.CompletedOrders,
+		})
+	}
+	return metrics, nil
+}
