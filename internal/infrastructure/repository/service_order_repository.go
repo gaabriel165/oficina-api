@@ -94,7 +94,7 @@ func (r *GormServiceOrderRepository) GetExecutionMetrics() (*domainrepo.Executio
 		FROM service_orders so
 		JOIN service_order_items soi ON soi.service_order_id = so.id
 		JOIN services s ON s.id = soi.service_id
-		WHERE so.finished_at IS NOT NULL AND so.started_at IS NOT NULL AND so.deleted_at IS NULL
+		WHERE so.finished_at IS NOT NULL AND so.started_at IS NOT NULL
 		GROUP BY s.id, s.name
 		ORDER BY s.name
 	`).Scan(&rows).Error; err != nil {
