@@ -5,7 +5,7 @@ ON CONFLICT DO NOTHING;
 
 -- customers
 INSERT INTO customers (id, name, document, document_type, phone, email, created_at, updated_at) VALUES
-  ('16b78307-e693-45c5-bf08-7ee50cf6b922', 'João Carlos Silva',          '12345678909',   'cpf',  '11998765432', 'joao.silva@email.com',                NOW(), NOW()),
+  ('16b78307-e693-45c5-bf08-7ee50cf6b922', 'João Carlos Silva',          '98765432100',   'cpf',  '11998765432', 'joao.silva@email.com',                NOW(), NOW()),
   ('d825ab74-8702-4a74-9dc8-3d5548d5611d', 'Transportes Paulistas Ltda', '12345678000195','cnpj', '1132589700',  'contato@transportespaulistas.com.br', NOW(), NOW())
 ON CONFLICT DO NOTHING;
 
