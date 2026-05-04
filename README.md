@@ -15,9 +15,8 @@ A solução foi construída aplicando **Domain-Driven Design (DDD)** com arquite
 
 ## Documentação DDD
 
-- **Event Storming e diagramas:** <!-- INSERIR LINK DO MIRO AQUI -->
+- **Event Storming e diagramas:** [miro.com/app/board/uXjVHZWTzN0=/](https://miro.com/app/board/uXjVHZWTzN0=/)
 - **Linguagem Ubíqua:** [`linguagem-ubiqua.md`](./linguagem-ubiqua.md)
-- **Event Storming resumido:** [`event-storming.md`](./event-storming.md)
 
 ## Stack
 
