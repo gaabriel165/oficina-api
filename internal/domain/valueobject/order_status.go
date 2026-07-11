@@ -26,6 +26,13 @@ var allowedTransitions = map[OrderStatus][]OrderStatus{
 	OrderStatusCancelled:       {},
 }
 
+var listingPriority = map[OrderStatus]int{
+	OrderStatusInExecution:     1,
+	OrderStatusWaitingApproval: 2,
+	OrderStatusInDiagnosis:     3,
+	OrderStatusReceived:        4,
+}
+
 func (s OrderStatus) CanTransitionTo(next OrderStatus) bool {
 	allowed := allowedTransitions[s]
 	for _, status := range allowed {
@@ -34,6 +41,10 @@ func (s OrderStatus) CanTransitionTo(next OrderStatus) bool {
 		}
 	}
 	return false
+}
+
+func (s OrderStatus) ListingPriority() int {
+	return listingPriority[s]
 }
 
 func (s OrderStatus) String() string {
