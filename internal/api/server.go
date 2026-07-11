@@ -93,7 +93,7 @@ func (s *Server) registerRoutes() {
 	)
 
 	orderHandler := handler.NewServiceOrderHandler(
-		serviceorder.NewCreateServiceOrderUseCase(orderRepo, customerRepo, vehicleRepo),
+		serviceorder.NewCreateServiceOrderUseCase(orderRepo, customerRepo, vehicleRepo, serviceRepo, partRepo),
 		serviceorder.NewStartDiagnosisUseCase(orderRepo),
 		serviceorder.NewAddServiceToOrderUseCase(orderRepo, serviceRepo),
 		serviceorder.NewAddPartToOrderUseCase(orderRepo, partRepo),

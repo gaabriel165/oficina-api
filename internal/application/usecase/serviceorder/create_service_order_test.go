@@ -35,6 +35,8 @@ func TestCreateServiceOrder_ShouldCreateSuccessfully(t *testing.T) {
 	orderRepo := mocks.NewMockServiceOrderRepository(t)
 	customerRepo := mocks.NewMockCustomerRepository(t)
 	vehicleRepo := mocks.NewMockVehicleRepository(t)
+	serviceRepo := mocks.NewMockServiceRepository(t)
+	partRepo := mocks.NewMockPartRepository(t)
 
 	customer, _ := entity.NewCustomer("John", "529.982.247-25", "11999999999", "j@email.com")
 	vehicle, _ := entity.NewVehicle("customer-id", "ABC-1234", "Toyota", "Corolla", 2020)
@@ -43,7 +45,7 @@ func TestCreateServiceOrder_ShouldCreateSuccessfully(t *testing.T) {
 	vehicleRepo.On("FindByID", "vehicle-id").Return(vehicle, nil)
 	orderRepo.On("Create", mock.Anything).Return(nil)
 
-	uc := serviceorder.NewCreateServiceOrderUseCase(orderRepo, customerRepo, vehicleRepo)
+	uc := serviceorder.NewCreateServiceOrderUseCase(orderRepo, customerRepo, vehicleRepo, serviceRepo, partRepo)
 	result, err := uc.Execute(serviceorder.CreateServiceOrderInput{
 		CustomerID: "customer-id",
 		VehicleID:  "vehicle-id",
@@ -55,14 +57,48 @@ func TestCreateServiceOrder_ShouldCreateSuccessfully(t *testing.T) {
 	orderRepo.AssertExpectations(t)
 }
 
+func TestCreateServiceOrder_ShouldCreateWithServicesAndParts(t *testing.T) {
+	orderRepo := mocks.NewMockServiceOrderRepository(t)
+	customerRepo := mocks.NewMockCustomerRepository(t)
+	vehicleRepo := mocks.NewMockVehicleRepository(t)
+	serviceRepo := mocks.NewMockServiceRepository(t)
+	partRepo := mocks.NewMockPartRepository(t)
+
+	customer, _ := entity.NewCustomer("John", "529.982.247-25", "11999999999", "j@email.com")
+	vehicle, _ := entity.NewVehicle("customer-id", "ABC-1234", "Toyota", "Corolla", 2020)
+	svc, _ := entity.NewService("Oil Change", "desc", 150.00, 60)
+	part, _ := entity.NewPart("Oil Filter", "desc", 29.90, 10)
+
+	customerRepo.On("FindByID", "customer-id").Return(customer, nil)
+	vehicleRepo.On("FindByID", "vehicle-id").Return(vehicle, nil)
+	serviceRepo.On("FindByID", svc.ID()).Return(svc, nil)
+	partRepo.On("FindByID", part.ID()).Return(part, nil)
+	orderRepo.On("Create", mock.Anything).Return(nil)
+
+	uc := serviceorder.NewCreateServiceOrderUseCase(orderRepo, customerRepo, vehicleRepo, serviceRepo, partRepo)
+	result, err := uc.Execute(serviceorder.CreateServiceOrderInput{
+		CustomerID: "customer-id",
+		VehicleID:  "vehicle-id",
+		Services:   []string{svc.ID()},
+		Parts:      []serviceorder.CreateServiceOrderPartInput{{PartID: part.ID(), Quantity: 2}},
+	})
+
+	assert.NoError(t, err)
+	assert.Equal(t, valueobject.OrderStatusReceived, result.Status())
+	assert.Len(t, result.Items(), 1)
+	assert.Len(t, result.Parts(), 1)
+}
+
 func TestCreateServiceOrder_ShouldReturnErrorWhenCustomerNotFound(t *testing.T) {
 	orderRepo := mocks.NewMockServiceOrderRepository(t)
 	customerRepo := mocks.NewMockCustomerRepository(t)
 	vehicleRepo := mocks.NewMockVehicleRepository(t)
+	serviceRepo := mocks.NewMockServiceRepository(t)
+	partRepo := mocks.NewMockPartRepository(t)
 
 	customerRepo.On("FindByID", "customer-id").Return(nil, repository.ErrCustomerNotFound)
 
-	uc := serviceorder.NewCreateServiceOrderUseCase(orderRepo, customerRepo, vehicleRepo)
+	uc := serviceorder.NewCreateServiceOrderUseCase(orderRepo, customerRepo, vehicleRepo, serviceRepo, partRepo)
 	_, err := uc.Execute(serviceorder.CreateServiceOrderInput{
 		CustomerID: "customer-id",
 		VehicleID:  "vehicle-id",
@@ -75,6 +111,8 @@ func TestCreateServiceOrder_ShouldReturnErrorWhenVehicleNotOwnedByCustomer(t *te
 	orderRepo := mocks.NewMockServiceOrderRepository(t)
 	customerRepo := mocks.NewMockCustomerRepository(t)
 	vehicleRepo := mocks.NewMockVehicleRepository(t)
+	serviceRepo := mocks.NewMockServiceRepository(t)
+	partRepo := mocks.NewMockPartRepository(t)
 
 	customer, _ := entity.NewCustomer("John", "529.982.247-25", "11999999999", "j@email.com")
 	vehicleOfAnotherCustomer, _ := entity.NewVehicle("other-customer-id", "ABC-1234", "Toyota", "Corolla", 2020)
@@ -82,13 +120,62 @@ func TestCreateServiceOrder_ShouldReturnErrorWhenVehicleNotOwnedByCustomer(t *te
 	customerRepo.On("FindByID", "customer-id").Return(customer, nil)
 	vehicleRepo.On("FindByID", "vehicle-id").Return(vehicleOfAnotherCustomer, nil)
 
-	uc := serviceorder.NewCreateServiceOrderUseCase(orderRepo, customerRepo, vehicleRepo)
+	uc := serviceorder.NewCreateServiceOrderUseCase(orderRepo, customerRepo, vehicleRepo, serviceRepo, partRepo)
 	_, err := uc.Execute(serviceorder.CreateServiceOrderInput{
 		CustomerID: "customer-id",
 		VehicleID:  "vehicle-id",
 	})
 
 	assert.ErrorIs(t, err, entity.ErrServiceOrderVehicleNotOwnedByCustomer)
+}
+
+func TestCreateServiceOrder_ShouldReturnErrorWhenServiceNotFound(t *testing.T) {
+	orderRepo := mocks.NewMockServiceOrderRepository(t)
+	customerRepo := mocks.NewMockCustomerRepository(t)
+	vehicleRepo := mocks.NewMockVehicleRepository(t)
+	serviceRepo := mocks.NewMockServiceRepository(t)
+	partRepo := mocks.NewMockPartRepository(t)
+
+	customer, _ := entity.NewCustomer("John", "529.982.247-25", "11999999999", "j@email.com")
+	vehicle, _ := entity.NewVehicle("customer-id", "ABC-1234", "Toyota", "Corolla", 2020)
+
+	customerRepo.On("FindByID", "customer-id").Return(customer, nil)
+	vehicleRepo.On("FindByID", "vehicle-id").Return(vehicle, nil)
+	serviceRepo.On("FindByID", "service-id").Return(nil, repository.ErrServiceNotFound)
+
+	uc := serviceorder.NewCreateServiceOrderUseCase(orderRepo, customerRepo, vehicleRepo, serviceRepo, partRepo)
+	_, err := uc.Execute(serviceorder.CreateServiceOrderInput{
+		CustomerID: "customer-id",
+		VehicleID:  "vehicle-id",
+		Services:   []string{"service-id"},
+	})
+
+	assert.ErrorIs(t, err, repository.ErrServiceNotFound)
+}
+
+func TestCreateServiceOrder_ShouldReturnErrorWhenInsufficientStock(t *testing.T) {
+	orderRepo := mocks.NewMockServiceOrderRepository(t)
+	customerRepo := mocks.NewMockCustomerRepository(t)
+	vehicleRepo := mocks.NewMockVehicleRepository(t)
+	serviceRepo := mocks.NewMockServiceRepository(t)
+	partRepo := mocks.NewMockPartRepository(t)
+
+	customer, _ := entity.NewCustomer("John", "529.982.247-25", "11999999999", "j@email.com")
+	vehicle, _ := entity.NewVehicle("customer-id", "ABC-1234", "Toyota", "Corolla", 2020)
+	part, _ := entity.NewPart("Oil Filter", "desc", 29.90, 1)
+
+	customerRepo.On("FindByID", "customer-id").Return(customer, nil)
+	vehicleRepo.On("FindByID", "vehicle-id").Return(vehicle, nil)
+	partRepo.On("FindByID", part.ID()).Return(part, nil)
+
+	uc := serviceorder.NewCreateServiceOrderUseCase(orderRepo, customerRepo, vehicleRepo, serviceRepo, partRepo)
+	_, err := uc.Execute(serviceorder.CreateServiceOrderInput{
+		CustomerID: "customer-id",
+		VehicleID:  "vehicle-id",
+		Parts:      []serviceorder.CreateServiceOrderPartInput{{PartID: part.ID(), Quantity: 5}},
+	})
+
+	assert.ErrorIs(t, err, entity.ErrPartInsufficientStock)
 }
 
 func TestApproveBudget_ShouldDebitStockAndTransitionStatus(t *testing.T) {

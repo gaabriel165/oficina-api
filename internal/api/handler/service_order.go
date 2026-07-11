@@ -137,10 +137,20 @@ func (h *ServiceOrderHandler) Create(c *gin.Context) {
 		return
 	}
 
+	parts := make([]serviceorder.CreateServiceOrderPartInput, 0, len(req.Parts))
+	for _, part := range req.Parts {
+		parts = append(parts, serviceorder.CreateServiceOrderPartInput{
+			PartID:   part.PartID,
+			Quantity: part.Quantity,
+		})
+	}
+
 	result, err := h.createUC.Execute(serviceorder.CreateServiceOrderInput{
 		CustomerID: req.CustomerID,
 		VehicleID:  req.VehicleID,
 		Notes:      req.Notes,
+		Services:   req.Services,
+		Parts:      parts,
 	})
 	if err != nil {
 		response.Error(c, err)
