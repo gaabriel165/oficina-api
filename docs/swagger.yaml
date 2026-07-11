@@ -17,6 +17,16 @@ definitions:
     required:
     - service_id
     type: object
+  dto.BudgetApprovalWebhookRequest:
+    properties:
+      decision:
+        enum:
+        - approved
+        - rejected
+        type: string
+    required:
+    - decision
+    type: object
   dto.CreateCustomerRequest:
     properties:
       document:
@@ -48,12 +58,30 @@ definitions:
     - name
     - unit_price
     type: object
+  dto.CreateServiceOrderPartRequest:
+    properties:
+      part_id:
+        type: string
+      quantity:
+        type: integer
+    required:
+    - part_id
+    - quantity
+    type: object
   dto.CreateServiceOrderRequest:
     properties:
       customer_id:
         type: string
       notes:
         type: string
+      parts:
+        items:
+          $ref: '#/definitions/dto.CreateServiceOrderPartRequest'
+        type: array
+      services:
+        items:
+          type: string
+        type: array
       vehicle_id:
         type: string
     required:
@@ -813,6 +841,53 @@ paths:
       security:
       - BearerAuth: []
       summary: Approve the budget and start execution
+      tags:
+      - service-orders
+  /service-orders/{id}/budget-approval:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Webhook shared secret
+        in: header
+        name: X-Webhook-Secret
+        required: true
+        type: string
+      - description: Service Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Budget decision
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.BudgetApprovalWebhookRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ServiceOrderResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Receive an external budget approval or rejection notification
       tags:
       - service-orders
   /service-orders/{id}/deliver:
