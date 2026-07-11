@@ -112,9 +112,11 @@ func (s *Server) registerRoutes() {
 
 	v1 := s.router.Group("/api/v1")
 	protected := v1.Group("", middleware.Auth(s.config.JWTSecret))
+	webhook := v1.Group("", middleware.WebhookAuth(s.config.WebhookSecret))
 
 	authHandler.RegisterRoutes(v1)
 	orderHandler.RegisterPublicRoutes(v1)
+	orderHandler.RegisterWebhookRoutes(webhook)
 	customerHandler.RegisterRoutes(protected)
 	vehicleHandler.RegisterRoutes(protected)
 	partHandler.RegisterRoutes(protected)

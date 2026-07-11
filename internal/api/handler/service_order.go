@@ -73,6 +73,10 @@ func (h *ServiceOrderHandler) RegisterPublicRoutes(router *gin.RouterGroup) {
 	router.GET("/service-orders/:id/status", h.GetStatus)
 }
 
+func (h *ServiceOrderHandler) RegisterWebhookRoutes(router *gin.RouterGroup) {
+	router.POST("/service-orders/:id/budget-approval", h.BudgetApprovalWebhook)
+}
+
 // GetMetrics godoc
 // @Summary      Get average execution time metrics for service orders
 // @Tags         service-orders
@@ -333,6 +337,45 @@ func (h *ServiceOrderHandler) ApproveBudget(c *gin.Context) {
 // @Router       /service-orders/{id}/reject-budget [patch]
 func (h *ServiceOrderHandler) RejectBudget(c *gin.Context) {
 	result, err := h.rejectUC.Execute(c.Param("id"))
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, dto.ToServiceOrderResponse(result))
+}
+
+// BudgetApprovalWebhook godoc
+// @Summary      Receive an external budget approval or rejection notification
+// @Tags         service-orders
+// @Accept       json
+// @Produce      json
+// @Param        X-Webhook-Secret  header  string                            true  "Webhook shared secret"
+// @Param        id                path    string                            true  "Service Order ID"
+// @Param        body              body    dto.BudgetApprovalWebhookRequest  true  "Budget decision"
+// @Success      200  {object}  dto.ServiceOrderResponse
+// @Failure      400  {object}  response.ErrorResponse
+// @Failure      401  {object}  response.ErrorResponse
+// @Failure      404  {object}  response.ErrorResponse
+// @Failure      422  {object}  response.ErrorResponse
+// @Router       /service-orders/{id}/budget-approval [post]
+func (h *ServiceOrderHandler) BudgetApprovalWebhook(c *gin.Context) {
+	var req dto.BudgetApprovalWebhookRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if req.Decision == dto.BudgetDecisionRejected {
+		result, err := h.rejectUC.Execute(c.Param("id"))
+		if err != nil {
+			response.Error(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, dto.ToServiceOrderResponse(result))
+		return
+	}
+
+	result, err := h.approveUC.Execute(c.Param("id"))
 	if err != nil {
 		response.Error(c, err)
 		return
