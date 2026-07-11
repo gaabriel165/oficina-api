@@ -49,7 +49,7 @@ func (r *GormServiceOrderRepository) Update(order *entity.ServiceOrder) error {
 func (r *GormServiceOrderRepository) FindByID(id string) (*entity.ServiceOrder, error) {
 	var m model.ServiceOrderModel
 	err := r.db.Preload("Items").Preload("Parts").First(&m, "id = ?", id).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
+	if isNotFound(err) {
 		return nil, domainrepo.ErrServiceOrderNotFound
 	}
 	if err != nil {

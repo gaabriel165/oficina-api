@@ -1,8 +1,6 @@
 package repository
 
 import (
-	"errors"
-
 	"github.com/gabrielcamargo/oficina-api/internal/domain/entity"
 	domainrepo "github.com/gabrielcamargo/oficina-api/internal/domain/repository"
 	"github.com/gabrielcamargo/oficina-api/internal/infrastructure/database/model"
@@ -32,7 +30,7 @@ func (r *GormCustomerRepository) Delete(id string) error {
 func (r *GormCustomerRepository) FindByID(id string) (*entity.Customer, error) {
 	var m model.CustomerModel
 	err := r.db.First(&m, "id = ?", id).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
+	if isNotFound(err) {
 		return nil, domainrepo.ErrCustomerNotFound
 	}
 	if err != nil {
@@ -44,7 +42,7 @@ func (r *GormCustomerRepository) FindByID(id string) (*entity.Customer, error) {
 func (r *GormCustomerRepository) FindByDocument(document string) (*entity.Customer, error) {
 	var m model.CustomerModel
 	err := r.db.First(&m, "document = ?", document).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
+	if isNotFound(err) {
 		return nil, domainrepo.ErrCustomerNotFound
 	}
 	if err != nil {

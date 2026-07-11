@@ -17,6 +17,10 @@ type ErrorResponse struct {
 
 func Error(c *gin.Context, err error) {
 	status := statusFromError(err)
+	if status == http.StatusInternalServerError {
+		c.JSON(status, ErrorResponse{Error: "internal server error"})
+		return
+	}
 	c.JSON(status, ErrorResponse{Error: err.Error()})
 }
 
