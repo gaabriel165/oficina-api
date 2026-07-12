@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Unit tests
+        run: go test ./internal/domain/... ./internal/application/... ./internal/api/...
+
+      - name: Integration tests
+        run: go test ./internal/integration/... -timeout 300s
