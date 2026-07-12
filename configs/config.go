@@ -11,6 +11,8 @@ type Config struct {
 	DatabaseURL   string
 	JWTSecret     string
 	WebhookSecret string
+	ResendAPIKey  string
+	EmailFrom     string
 }
 
 func Load() (*Config, error) {
@@ -21,6 +23,8 @@ func Load() (*Config, error) {
 		DatabaseURL:   getEnv("DATABASE_URL", ""),
 		JWTSecret:     getEnv("JWT_SECRET", ""),
 		WebhookSecret: getEnv("WEBHOOK_SECRET", ""),
+		ResendAPIKey:  getEnv("RESEND_API_KEY", ""),
+		EmailFrom:     getEnv("EMAIL_FROM", "onboarding@resend.dev"),
 	}, nil
 }
 
