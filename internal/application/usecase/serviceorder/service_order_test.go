@@ -94,7 +94,7 @@ func TestStartDiagnosis_ShouldTransitionStatus(t *testing.T) {
 	orderRepo.On("FindByID", "order-id").Return(makeOrder(), nil)
 	orderRepo.On("Update", mock.Anything).Return(nil)
 
-	uc := serviceorder.NewStartDiagnosisUseCase(orderRepo)
+	uc := serviceorder.NewStartDiagnosisUseCase(orderRepo, noopNotifier{})
 	result, err := uc.Execute("order-id")
 
 	assert.NoError(t, err)
@@ -106,7 +106,7 @@ func TestStartDiagnosis_ShouldReturnErrorWhenNotFound(t *testing.T) {
 
 	orderRepo.On("FindByID", "order-id").Return(nil, repository.ErrServiceOrderNotFound)
 
-	uc := serviceorder.NewStartDiagnosisUseCase(orderRepo)
+	uc := serviceorder.NewStartDiagnosisUseCase(orderRepo, noopNotifier{})
 	_, err := uc.Execute("order-id")
 
 	assert.ErrorIs(t, err, repository.ErrServiceOrderNotFound)
@@ -117,7 +117,7 @@ func TestStartDiagnosis_ShouldReturnErrorOnInvalidTransition(t *testing.T) {
 
 	orderRepo.On("FindByID", "order-id").Return(makeOrderInDiagnosis(), nil)
 
-	uc := serviceorder.NewStartDiagnosisUseCase(orderRepo)
+	uc := serviceorder.NewStartDiagnosisUseCase(orderRepo, noopNotifier{})
 	_, err := uc.Execute("order-id")
 
 	assert.ErrorIs(t, err, entity.ErrServiceOrderInvalidTransition)
@@ -275,7 +275,7 @@ func TestSendBudget_ShouldTransitionStatus(t *testing.T) {
 	orderRepo.On("FindByID", "order-id").Return(order, nil)
 	orderRepo.On("Update", mock.Anything).Return(nil)
 
-	uc := serviceorder.NewSendBudgetUseCase(orderRepo)
+	uc := serviceorder.NewSendBudgetUseCase(orderRepo, noopNotifier{})
 	result, err := uc.Execute("order-id")
 
 	assert.NoError(t, err)
@@ -287,7 +287,7 @@ func TestSendBudget_ShouldReturnErrorWhenOrderNotFound(t *testing.T) {
 
 	orderRepo.On("FindByID", "order-id").Return(nil, repository.ErrServiceOrderNotFound)
 
-	uc := serviceorder.NewSendBudgetUseCase(orderRepo)
+	uc := serviceorder.NewSendBudgetUseCase(orderRepo, noopNotifier{})
 	_, err := uc.Execute("order-id")
 
 	assert.ErrorIs(t, err, repository.ErrServiceOrderNotFound)
@@ -298,7 +298,7 @@ func TestSendBudget_ShouldReturnErrorWhenNoItems(t *testing.T) {
 
 	orderRepo.On("FindByID", "order-id").Return(makeOrderInDiagnosis(), nil)
 
-	uc := serviceorder.NewSendBudgetUseCase(orderRepo)
+	uc := serviceorder.NewSendBudgetUseCase(orderRepo, noopNotifier{})
 	_, err := uc.Execute("order-id")
 
 	assert.ErrorIs(t, err, entity.ErrServiceOrderNoItems)
@@ -312,7 +312,7 @@ func TestFinishExecution_ShouldTransitionStatus(t *testing.T) {
 	orderRepo.On("FindByID", "order-id").Return(order, nil)
 	orderRepo.On("Update", mock.Anything).Return(nil)
 
-	uc := serviceorder.NewFinishExecutionUseCase(orderRepo)
+	uc := serviceorder.NewFinishExecutionUseCase(orderRepo, noopNotifier{})
 	result, err := uc.Execute("order-id")
 
 	assert.NoError(t, err)
@@ -324,7 +324,7 @@ func TestFinishExecution_ShouldReturnErrorWhenOrderNotFound(t *testing.T) {
 
 	orderRepo.On("FindByID", "order-id").Return(nil, repository.ErrServiceOrderNotFound)
 
-	uc := serviceorder.NewFinishExecutionUseCase(orderRepo)
+	uc := serviceorder.NewFinishExecutionUseCase(orderRepo, noopNotifier{})
 	_, err := uc.Execute("order-id")
 
 	assert.ErrorIs(t, err, repository.ErrServiceOrderNotFound)
@@ -335,7 +335,7 @@ func TestFinishExecution_ShouldReturnErrorOnInvalidTransition(t *testing.T) {
 
 	orderRepo.On("FindByID", "order-id").Return(makeOrder(), nil)
 
-	uc := serviceorder.NewFinishExecutionUseCase(orderRepo)
+	uc := serviceorder.NewFinishExecutionUseCase(orderRepo, noopNotifier{})
 	_, err := uc.Execute("order-id")
 
 	assert.ErrorIs(t, err, entity.ErrServiceOrderInvalidTransition)
@@ -350,7 +350,7 @@ func TestDeliverVehicle_ShouldTransitionStatus(t *testing.T) {
 	orderRepo.On("FindByID", "order-id").Return(order, nil)
 	orderRepo.On("Update", mock.Anything).Return(nil)
 
-	uc := serviceorder.NewDeliverVehicleUseCase(orderRepo)
+	uc := serviceorder.NewDeliverVehicleUseCase(orderRepo, noopNotifier{})
 	result, err := uc.Execute("order-id")
 
 	assert.NoError(t, err)
@@ -362,7 +362,7 @@ func TestDeliverVehicle_ShouldReturnErrorWhenOrderNotFound(t *testing.T) {
 
 	orderRepo.On("FindByID", "order-id").Return(nil, repository.ErrServiceOrderNotFound)
 
-	uc := serviceorder.NewDeliverVehicleUseCase(orderRepo)
+	uc := serviceorder.NewDeliverVehicleUseCase(orderRepo, noopNotifier{})
 	_, err := uc.Execute("order-id")
 
 	assert.ErrorIs(t, err, repository.ErrServiceOrderNotFound)
@@ -373,7 +373,7 @@ func TestDeliverVehicle_ShouldReturnErrorOnInvalidTransition(t *testing.T) {
 
 	orderRepo.On("FindByID", "order-id").Return(makeOrder(), nil)
 
-	uc := serviceorder.NewDeliverVehicleUseCase(orderRepo)
+	uc := serviceorder.NewDeliverVehicleUseCase(orderRepo, noopNotifier{})
 	_, err := uc.Execute("order-id")
 
 	assert.ErrorIs(t, err, entity.ErrServiceOrderInvalidTransition)
@@ -385,7 +385,7 @@ func TestApproveBudget_ShouldReturnErrorWhenOrderNotFound(t *testing.T) {
 
 	orderRepo.On("FindByID", "order-id").Return(nil, repository.ErrServiceOrderNotFound)
 
-	uc := serviceorder.NewApproveBudgetUseCase(orderRepo, partRepo)
+	uc := serviceorder.NewApproveBudgetUseCase(orderRepo, partRepo, noopNotifier{})
 	_, err := uc.Execute("order-id")
 
 	assert.ErrorIs(t, err, repository.ErrServiceOrderNotFound)
@@ -397,7 +397,7 @@ func TestApproveBudget_ShouldReturnErrorOnInvalidTransition(t *testing.T) {
 
 	orderRepo.On("FindByID", "order-id").Return(makeOrder(), nil)
 
-	uc := serviceorder.NewApproveBudgetUseCase(orderRepo, partRepo)
+	uc := serviceorder.NewApproveBudgetUseCase(orderRepo, partRepo, noopNotifier{})
 	_, err := uc.Execute("order-id")
 
 	assert.ErrorIs(t, err, entity.ErrServiceOrderInvalidTransition)
@@ -408,7 +408,7 @@ func TestRejectBudget_ShouldReturnErrorWhenOrderNotFound(t *testing.T) {
 
 	orderRepo.On("FindByID", "order-id").Return(nil, repository.ErrServiceOrderNotFound)
 
-	uc := serviceorder.NewRejectBudgetUseCase(orderRepo)
+	uc := serviceorder.NewRejectBudgetUseCase(orderRepo, noopNotifier{})
 	_, err := uc.Execute("order-id")
 
 	assert.ErrorIs(t, err, repository.ErrServiceOrderNotFound)
@@ -419,7 +419,7 @@ func TestRejectBudget_ShouldReturnErrorOnInvalidTransition(t *testing.T) {
 
 	orderRepo.On("FindByID", "order-id").Return(makeOrder(), nil)
 
-	uc := serviceorder.NewRejectBudgetUseCase(orderRepo)
+	uc := serviceorder.NewRejectBudgetUseCase(orderRepo, noopNotifier{})
 	_, err := uc.Execute("order-id")
 
 	assert.ErrorIs(t, err, entity.ErrServiceOrderInvalidTransition)

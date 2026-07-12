@@ -7,10 +7,11 @@ import (
 
 type DeliverVehicleUseCase struct {
 	orderRepo repository.ServiceOrderRepository
+	notifier  StatusNotifier
 }
 
-func NewDeliverVehicleUseCase(orderRepo repository.ServiceOrderRepository) *DeliverVehicleUseCase {
-	return &DeliverVehicleUseCase{orderRepo: orderRepo}
+func NewDeliverVehicleUseCase(orderRepo repository.ServiceOrderRepository, notifier StatusNotifier) *DeliverVehicleUseCase {
+	return &DeliverVehicleUseCase{orderRepo: orderRepo, notifier: notifier}
 }
 
 func (u *DeliverVehicleUseCase) Execute(orderID string) (*entity.ServiceOrder, error) {
@@ -26,6 +27,8 @@ func (u *DeliverVehicleUseCase) Execute(orderID string) (*entity.ServiceOrder, e
 	if err := u.orderRepo.Update(order); err != nil {
 		return nil, err
 	}
+
+	u.notifier.Notify(order)
 
 	return order, nil
 }

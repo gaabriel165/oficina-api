@@ -11,6 +11,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type noopNotifier struct{}
+
+func (noopNotifier) Notify(*entity.ServiceOrder) {}
+
 func TestServiceOrderFullFlow_Integration(t *testing.T) {
 	db := newTestDB(t)
 
@@ -45,7 +49,7 @@ func TestServiceOrderFullFlow_Integration(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, valueobject.OrderStatusReceived, order.Status())
 
-	startUC := serviceorder.NewStartDiagnosisUseCase(orderRepo)
+	startUC := serviceorder.NewStartDiagnosisUseCase(orderRepo, noopNotifier{})
 	order, err = startUC.Execute(order.ID())
 	require.NoError(t, err)
 	assert.Equal(t, valueobject.OrderStatusInDiagnosis, order.Status())
@@ -67,13 +71,13 @@ func TestServiceOrderFullFlow_Integration(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, order.Parts(), 1)
 
-	sendBudgetUC := serviceorder.NewSendBudgetUseCase(orderRepo)
+	sendBudgetUC := serviceorder.NewSendBudgetUseCase(orderRepo, noopNotifier{})
 	order, err = sendBudgetUC.Execute(order.ID())
 	require.NoError(t, err)
 	assert.Equal(t, valueobject.OrderStatusWaitingApproval, order.Status())
 	assert.Equal(t, 209.80, order.TotalAmount())
 
-	approveUC := serviceorder.NewApproveBudgetUseCase(orderRepo, partRepo)
+	approveUC := serviceorder.NewApproveBudgetUseCase(orderRepo, partRepo, noopNotifier{})
 	order, err = approveUC.Execute(order.ID())
 	require.NoError(t, err)
 	assert.Equal(t, valueobject.OrderStatusInExecution, order.Status())
@@ -82,12 +86,12 @@ func TestServiceOrderFullFlow_Integration(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 8, updatedPart.StockQuantity())
 
-	finishUC := serviceorder.NewFinishExecutionUseCase(orderRepo)
+	finishUC := serviceorder.NewFinishExecutionUseCase(orderRepo, noopNotifier{})
 	order, err = finishUC.Execute(order.ID())
 	require.NoError(t, err)
 	assert.Equal(t, valueobject.OrderStatusFinished, order.Status())
 
-	deliverUC := serviceorder.NewDeliverVehicleUseCase(orderRepo)
+	deliverUC := serviceorder.NewDeliverVehicleUseCase(orderRepo, noopNotifier{})
 	order, err = deliverUC.Execute(order.ID())
 	require.NoError(t, err)
 	assert.Equal(t, valueobject.OrderStatusDelivered, order.Status())
@@ -124,7 +128,7 @@ func TestServiceOrderRejectionFlow_Integration(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	startUC := serviceorder.NewStartDiagnosisUseCase(orderRepo)
+	startUC := serviceorder.NewStartDiagnosisUseCase(orderRepo, noopNotifier{})
 	order, err = startUC.Execute(order.ID())
 	require.NoError(t, err)
 
@@ -135,11 +139,11 @@ func TestServiceOrderRejectionFlow_Integration(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	sendBudgetUC := serviceorder.NewSendBudgetUseCase(orderRepo)
+	sendBudgetUC := serviceorder.NewSendBudgetUseCase(orderRepo, noopNotifier{})
 	_, err = sendBudgetUC.Execute(order.ID())
 	require.NoError(t, err)
 
-	rejectUC := serviceorder.NewRejectBudgetUseCase(orderRepo)
+	rejectUC := serviceorder.NewRejectBudgetUseCase(orderRepo, noopNotifier{})
 	order, err = rejectUC.Execute(order.ID())
 	require.NoError(t, err)
 	assert.Equal(t, valueobject.OrderStatusCancelled, order.Status())
