@@ -7,10 +7,11 @@ import (
 
 type StartDiagnosisUseCase struct {
 	orderRepo repository.ServiceOrderRepository
+	notifier  StatusNotifier
 }
 
-func NewStartDiagnosisUseCase(orderRepo repository.ServiceOrderRepository) *StartDiagnosisUseCase {
-	return &StartDiagnosisUseCase{orderRepo: orderRepo}
+func NewStartDiagnosisUseCase(orderRepo repository.ServiceOrderRepository, notifier StatusNotifier) *StartDiagnosisUseCase {
+	return &StartDiagnosisUseCase{orderRepo: orderRepo, notifier: notifier}
 }
 
 func (u *StartDiagnosisUseCase) Execute(orderID string) (*entity.ServiceOrder, error) {
@@ -26,6 +27,8 @@ func (u *StartDiagnosisUseCase) Execute(orderID string) (*entity.ServiceOrder, e
 	if err := u.orderRepo.Update(order); err != nil {
 		return nil, err
 	}
+
+	u.notifier.Notify(order)
 
 	return order, nil
 }

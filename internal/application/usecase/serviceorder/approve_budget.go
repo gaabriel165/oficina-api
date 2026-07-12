@@ -8,13 +8,15 @@ import (
 type ApproveBudgetUseCase struct {
 	orderRepo repository.ServiceOrderRepository
 	partRepo  repository.PartRepository
+	notifier  StatusNotifier
 }
 
 func NewApproveBudgetUseCase(
 	orderRepo repository.ServiceOrderRepository,
 	partRepo repository.PartRepository,
+	notifier StatusNotifier,
 ) *ApproveBudgetUseCase {
-	return &ApproveBudgetUseCase{orderRepo: orderRepo, partRepo: partRepo}
+	return &ApproveBudgetUseCase{orderRepo: orderRepo, partRepo: partRepo, notifier: notifier}
 }
 
 func (u *ApproveBudgetUseCase) Execute(orderID string) (*entity.ServiceOrder, error) {
@@ -45,6 +47,8 @@ func (u *ApproveBudgetUseCase) Execute(orderID string) (*entity.ServiceOrder, er
 	if err := u.orderRepo.Update(order); err != nil {
 		return nil, err
 	}
+
+	u.notifier.Notify(order)
 
 	return order, nil
 }

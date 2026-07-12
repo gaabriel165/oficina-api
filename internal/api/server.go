@@ -14,6 +14,7 @@ import (
 	"github.com/gabrielcamargo/oficina-api/internal/application/usecase/serviceorder"
 	"github.com/gabrielcamargo/oficina-api/internal/application/usecase/vehicle"
 	"github.com/gabrielcamargo/oficina-api/internal/infrastructure/external"
+	"github.com/gabrielcamargo/oficina-api/internal/infrastructure/notification"
 	infrarepo "github.com/gabrielcamargo/oficina-api/internal/infrastructure/repository"
 	"github.com/gin-gonic/gin"
 	swaggerfiles "github.com/swaggo/files"
@@ -53,6 +54,8 @@ func (s *Server) registerRoutes() {
 	serviceRepo := infrarepo.NewGormServiceRepository(s.db)
 	orderRepo := infrarepo.NewGormServiceOrderRepository(s.db)
 	cnpjSvc := external.NewBrasilAPIClient()
+	emailNotifier := notification.NewResendNotifier(s.config.ResendAPIKey, s.config.EmailFrom)
+	statusNotifier := serviceorder.NewOrderStatusNotifier(customerRepo, emailNotifier)
 
 	authHandler := handler.NewAuthHandler(
 		auth.NewCreateUserUseCase(userRepo),
@@ -94,14 +97,14 @@ func (s *Server) registerRoutes() {
 
 	orderHandler := handler.NewServiceOrderHandler(
 		serviceorder.NewCreateServiceOrderUseCase(orderRepo, customerRepo, vehicleRepo, serviceRepo, partRepo),
-		serviceorder.NewStartDiagnosisUseCase(orderRepo),
+		serviceorder.NewStartDiagnosisUseCase(orderRepo, statusNotifier),
 		serviceorder.NewAddServiceToOrderUseCase(orderRepo, serviceRepo),
 		serviceorder.NewAddPartToOrderUseCase(orderRepo, partRepo),
-		serviceorder.NewSendBudgetUseCase(orderRepo),
-		serviceorder.NewApproveBudgetUseCase(orderRepo, partRepo),
-		serviceorder.NewRejectBudgetUseCase(orderRepo),
-		serviceorder.NewFinishExecutionUseCase(orderRepo),
-		serviceorder.NewDeliverVehicleUseCase(orderRepo),
+		serviceorder.NewSendBudgetUseCase(orderRepo, statusNotifier),
+		serviceorder.NewApproveBudgetUseCase(orderRepo, partRepo, statusNotifier),
+		serviceorder.NewRejectBudgetUseCase(orderRepo, statusNotifier),
+		serviceorder.NewFinishExecutionUseCase(orderRepo, statusNotifier),
+		serviceorder.NewDeliverVehicleUseCase(orderRepo, statusNotifier),
 		serviceorder.NewGetServiceOrderUseCase(orderRepo),
 		serviceorder.NewListServiceOrdersUseCase(orderRepo),
 		serviceorder.NewGetExecutionMetricsUseCase(orderRepo),

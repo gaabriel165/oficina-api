@@ -7,10 +7,11 @@ import (
 
 type SendBudgetUseCase struct {
 	orderRepo repository.ServiceOrderRepository
+	notifier  StatusNotifier
 }
 
-func NewSendBudgetUseCase(orderRepo repository.ServiceOrderRepository) *SendBudgetUseCase {
-	return &SendBudgetUseCase{orderRepo: orderRepo}
+func NewSendBudgetUseCase(orderRepo repository.ServiceOrderRepository, notifier StatusNotifier) *SendBudgetUseCase {
+	return &SendBudgetUseCase{orderRepo: orderRepo, notifier: notifier}
 }
 
 func (u *SendBudgetUseCase) Execute(orderID string) (*entity.ServiceOrder, error) {
@@ -26,6 +27,8 @@ func (u *SendBudgetUseCase) Execute(orderID string) (*entity.ServiceOrder, error
 	if err := u.orderRepo.Update(order); err != nil {
 		return nil, err
 	}
+
+	u.notifier.Notify(order)
 
 	return order, nil
 }
