@@ -748,6 +748,77 @@
                 }
             }
         },
+        "/service-orders/{id}/budget-approval": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "service-orders"
+                ],
+                "summary": "Receive an external budget approval or rejection notification",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Webhook shared secret",
+                        "name": "X-Webhook-Secret",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Service Order ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Budget decision",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.BudgetApprovalWebhookRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ServiceOrderResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/service-orders/{id}/deliver": {
             "patch": {
                 "security": [
@@ -1561,6 +1632,21 @@
                 }
             }
         },
+        "dto.BudgetApprovalWebhookRequest": {
+            "type": "object",
+            "required": [
+                "decision"
+            ],
+            "properties": {
+                "decision": {
+                    "type": "string",
+                    "enum": [
+                        "approved",
+                        "rejected"
+                    ]
+                }
+            }
+        },
         "dto.CreateCustomerRequest": {
             "type": "object",
             "required": [
@@ -1606,6 +1692,21 @@
                 }
             }
         },
+        "dto.CreateServiceOrderPartRequest": {
+            "type": "object",
+            "required": [
+                "part_id",
+                "quantity"
+            ],
+            "properties": {
+                "part_id": {
+                    "type": "string"
+                },
+                "quantity": {
+                    "type": "integer"
+                }
+            }
+        },
         "dto.CreateServiceOrderRequest": {
             "type": "object",
             "required": [
@@ -1618,6 +1719,18 @@
                 },
                 "notes": {
                     "type": "string"
+                },
+                "parts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.CreateServiceOrderPartRequest"
+                    }
+                },
+                "services": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "vehicle_id": {
                     "type": "string"

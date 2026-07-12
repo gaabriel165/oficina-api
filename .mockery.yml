@@ -4,6 +4,6 @@ structname: "Mock{{.InterfaceName}}"
 pkgname: "mocks"
 template: testify
 packages:
-  github.com/gabrielcamargo/tech-challenge/internal/domain/repository:
+  github.com/gabrielcamargo/oficina-api/internal/domain/repository:
     config:
       all: true

@@ -7,18 +7,20 @@ import (
 )
 
 type Config struct {
-	ServerPort  string
-	DatabaseURL string
-	JWTSecret   string
+	ServerPort    string
+	DatabaseURL   string
+	JWTSecret     string
+	WebhookSecret string
 }
 
 func Load() (*Config, error) {
 	_ = godotenv.Load()
 
 	return &Config{
-		ServerPort:  getEnv("SERVER_PORT", "8080"),
-		DatabaseURL: getEnv("DATABASE_URL", ""),
-		JWTSecret:   getEnv("JWT_SECRET", ""),
+		ServerPort:    getEnv("SERVER_PORT", "8080"),
+		DatabaseURL:   getEnv("DATABASE_URL", ""),
+		JWTSecret:     getEnv("JWT_SECRET", ""),
+		WebhookSecret: getEnv("WEBHOOK_SECRET", ""),
 	}, nil
 }
 

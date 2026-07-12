@@ -36,7 +36,7 @@ func TestServiceOrderFullFlow_Integration(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, partRepo.Create(part))
 
-	createUC := serviceorder.NewCreateServiceOrderUseCase(orderRepo, customerRepo, vehicleRepo)
+	createUC := serviceorder.NewCreateServiceOrderUseCase(orderRepo, customerRepo, vehicleRepo, serviceRepo, partRepo)
 	order, err := createUC.Execute(serviceorder.CreateServiceOrderInput{
 		CustomerID: customer.ID(),
 		VehicleID:  vehicle.ID(),
@@ -116,9 +116,7 @@ func TestServiceOrderRejectionFlow_Integration(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, serviceRepo.Create(svc))
 
-	_ = partRepo
-
-	createUC := serviceorder.NewCreateServiceOrderUseCase(orderRepo, customerRepo, vehicleRepo)
+	createUC := serviceorder.NewCreateServiceOrderUseCase(orderRepo, customerRepo, vehicleRepo, serviceRepo, partRepo)
 	order, err := createUC.Execute(serviceorder.CreateServiceOrderInput{
 		CustomerID: customer.ID(),
 		VehicleID:  vehicle.ID(),
@@ -152,6 +150,8 @@ func TestCreateServiceOrder_ShouldFailWhenVehicleNotOwnedByCustomer_Integration(
 
 	customerRepo := infrarepo.NewGormCustomerRepository(db)
 	vehicleRepo := infrarepo.NewGormVehicleRepository(db)
+	serviceRepo := infrarepo.NewGormServiceRepository(db)
+	partRepo := infrarepo.NewGormPartRepository(db)
 	orderRepo := infrarepo.NewGormServiceOrderRepository(db)
 
 	customer1, err := entity.NewCustomer("Alice", "529.982.247-25", "11777777777", "alice@workshop.com")
@@ -166,11 +166,54 @@ func TestCreateServiceOrder_ShouldFailWhenVehicleNotOwnedByCustomer_Integration(
 	require.NoError(t, err)
 	require.NoError(t, vehicleRepo.Create(vehicle))
 
-	createUC := serviceorder.NewCreateServiceOrderUseCase(orderRepo, customerRepo, vehicleRepo)
+	createUC := serviceorder.NewCreateServiceOrderUseCase(orderRepo, customerRepo, vehicleRepo, serviceRepo, partRepo)
 	_, err = createUC.Execute(serviceorder.CreateServiceOrderInput{
 		CustomerID: customer1.ID(),
 		VehicleID:  vehicle.ID(),
 	})
 
 	assert.ErrorIs(t, err, entity.ErrServiceOrderVehicleNotOwnedByCustomer)
+}
+
+func TestCreateServiceOrderWithServicesAndParts_Integration(t *testing.T) {
+	db := newTestDB(t)
+
+	customerRepo := infrarepo.NewGormCustomerRepository(db)
+	vehicleRepo := infrarepo.NewGormVehicleRepository(db)
+	serviceRepo := infrarepo.NewGormServiceRepository(db)
+	partRepo := infrarepo.NewGormPartRepository(db)
+	orderRepo := infrarepo.NewGormServiceOrderRepository(db)
+
+	customer, err := entity.NewCustomer("Carol", "529.982.247-25", "11555555555", "carol@workshop.com")
+	require.NoError(t, err)
+	require.NoError(t, customerRepo.Create(customer))
+
+	vehicle, err := entity.NewVehicle(customer.ID(), "JKL-3456", "Fiat", "Argo", 2022)
+	require.NoError(t, err)
+	require.NoError(t, vehicleRepo.Create(vehicle))
+
+	svc, err := entity.NewService("Alignment", "Wheel alignment", 120.00, 45)
+	require.NoError(t, err)
+	require.NoError(t, serviceRepo.Create(svc))
+
+	part, err := entity.NewPart("Brake Pad", "Front pad", 89.90, 5)
+	require.NoError(t, err)
+	require.NoError(t, partRepo.Create(part))
+
+	createUC := serviceorder.NewCreateServiceOrderUseCase(orderRepo, customerRepo, vehicleRepo, serviceRepo, partRepo)
+	order, err := createUC.Execute(serviceorder.CreateServiceOrderInput{
+		CustomerID: customer.ID(),
+		VehicleID:  vehicle.ID(),
+		Notes:      "full revision",
+		Services:   []string{svc.ID()},
+		Parts:      []serviceorder.CreateServiceOrderPartInput{{PartID: part.ID(), Quantity: 2}},
+	})
+	require.NoError(t, err)
+
+	persisted, err := orderRepo.FindByID(order.ID())
+	require.NoError(t, err)
+	assert.Equal(t, valueobject.OrderStatusReceived, persisted.Status())
+	assert.Len(t, persisted.Items(), 1)
+	assert.Len(t, persisted.Parts(), 1)
+	assert.Equal(t, 2, persisted.Parts()[0].Quantity())
 }

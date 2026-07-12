@@ -1,10 +1,9 @@
 package repository
 
 import (
-	"errors"
-
 	"github.com/gabrielcamargo/oficina-api/internal/domain/entity"
 	domainrepo "github.com/gabrielcamargo/oficina-api/internal/domain/repository"
+	"github.com/gabrielcamargo/oficina-api/internal/domain/valueobject"
 	"github.com/gabrielcamargo/oficina-api/internal/infrastructure/database/model"
 	"gorm.io/gorm"
 )
@@ -50,7 +49,7 @@ func (r *GormServiceOrderRepository) Update(order *entity.ServiceOrder) error {
 func (r *GormServiceOrderRepository) FindByID(id string) (*entity.ServiceOrder, error) {
 	var m model.ServiceOrderModel
 	err := r.db.Preload("Items").Preload("Parts").First(&m, "id = ?", id).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
+	if isNotFound(err) {
 		return nil, domainrepo.ErrServiceOrderNotFound
 	}
 	if err != nil {
@@ -59,11 +58,17 @@ func (r *GormServiceOrderRepository) FindByID(id string) (*entity.ServiceOrder, 
 	return m.ToDomain(), nil
 }
 
-func (r *GormServiceOrderRepository) FindAll() ([]*entity.ServiceOrder, error) {
+func (r *GormServiceOrderRepository) FindByStatuses(statuses []valueobject.OrderStatus) ([]*entity.ServiceOrder, error) {
+	values := make([]string, len(statuses))
+	for i, status := range statuses {
+		values[i] = status.String()
+	}
+
 	var models []model.ServiceOrderModel
-	if err := r.db.Preload("Items").Preload("Parts").Find(&models).Error; err != nil {
+	if err := r.db.Preload("Items").Preload("Parts").Where("status IN ?", values).Find(&models).Error; err != nil {
 		return nil, err
 	}
+
 	orders := make([]*entity.ServiceOrder, len(models))
 	for i, m := range models {
 		orders[i] = m.ToDomain()

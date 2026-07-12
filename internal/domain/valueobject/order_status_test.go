@@ -25,6 +25,12 @@ func TestOrderStatus_ShouldAllowValidTransitions(t *testing.T) {
 	}
 }
 
+func TestOrderStatus_ShouldRankListingPriorityByUrgency(t *testing.T) {
+	assert.Less(t, valueobject.OrderStatusInExecution.ListingPriority(), valueobject.OrderStatusWaitingApproval.ListingPriority())
+	assert.Less(t, valueobject.OrderStatusWaitingApproval.ListingPriority(), valueobject.OrderStatusInDiagnosis.ListingPriority())
+	assert.Less(t, valueobject.OrderStatusInDiagnosis.ListingPriority(), valueobject.OrderStatusReceived.ListingPriority())
+}
+
 func TestOrderStatus_ShouldDenyInvalidTransitions(t *testing.T) {
 	cases := []struct {
 		from valueobject.OrderStatus

@@ -2,6 +2,7 @@ package serviceorder_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/gabrielcamargo/oficina-api/internal/application/mocks"
 	"github.com/gabrielcamargo/oficina-api/internal/application/usecase/serviceorder"
@@ -35,16 +36,56 @@ func TestGetServiceOrder_ShouldReturnErrorWhenNotFound(t *testing.T) {
 	assert.ErrorIs(t, err, repository.ErrServiceOrderNotFound)
 }
 
-func TestListServiceOrders_ShouldReturnAll(t *testing.T) {
+func makeOrderInExecution() *entity.ServiceOrder {
+	order := makeOrderWaitingApproval()
+	order.ApproveBudget()
+	return order
+}
+
+func TestListServiceOrders_ShouldSortByStatusPriority(t *testing.T) {
 	orderRepo := mocks.NewMockServiceOrderRepository(t)
 
-	orderRepo.On("FindAll").Return([]*entity.ServiceOrder{makeOrder(), makeOrder()}, nil)
+	received := makeOrder()
+	inDiagnosis := makeOrderInDiagnosis()
+	waitingApproval := makeOrderWaitingApproval()
+	inExecution := makeOrderInExecution()
+
+	orderRepo.On("FindByStatuses", mock.Anything).Return(
+		[]*entity.ServiceOrder{received, waitingApproval, inExecution, inDiagnosis}, nil,
+	)
 
 	uc := serviceorder.NewListServiceOrdersUseCase(orderRepo)
 	results, err := uc.Execute()
 
 	assert.NoError(t, err)
-	assert.Len(t, results, 2)
+	assert.Equal(t, valueobject.OrderStatusInExecution, results[0].Status())
+	assert.Equal(t, valueobject.OrderStatusWaitingApproval, results[1].Status())
+	assert.Equal(t, valueobject.OrderStatusInDiagnosis, results[2].Status())
+	assert.Equal(t, valueobject.OrderStatusReceived, results[3].Status())
+}
+
+func TestListServiceOrders_ShouldSortOldestFirstWithinSameStatus(t *testing.T) {
+	orderRepo := mocks.NewMockServiceOrderRepository(t)
+
+	older := entity.RestoreServiceOrder(
+		"older", "customer-id", "vehicle-id", valueobject.OrderStatusReceived, "", 0,
+		nil, nil, nil, nil, time.Now().Add(-2*time.Hour), time.Now(),
+	)
+	newer := entity.RestoreServiceOrder(
+		"newer", "customer-id", "vehicle-id", valueobject.OrderStatusReceived, "", 0,
+		nil, nil, nil, nil, time.Now().Add(-1*time.Hour), time.Now(),
+	)
+
+	orderRepo.On("FindByStatuses", mock.Anything).Return(
+		[]*entity.ServiceOrder{newer, older}, nil,
+	)
+
+	uc := serviceorder.NewListServiceOrdersUseCase(orderRepo)
+	results, err := uc.Execute()
+
+	assert.NoError(t, err)
+	assert.Equal(t, "older", results[0].ID())
+	assert.Equal(t, "newer", results[1].ID())
 }
 
 func TestStartDiagnosis_ShouldTransitionStatus(t *testing.T) {

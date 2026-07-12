@@ -1,8 +1,6 @@
 package repository
 
 import (
-	"errors"
-
 	"github.com/gabrielcamargo/oficina-api/internal/domain/entity"
 	domainrepo "github.com/gabrielcamargo/oficina-api/internal/domain/repository"
 	"github.com/gabrielcamargo/oficina-api/internal/infrastructure/database/model"
@@ -32,7 +30,7 @@ func (r *GormServiceRepository) Delete(id string) error {
 func (r *GormServiceRepository) FindByID(id string) (*entity.Service, error) {
 	var m model.ServiceModel
 	err := r.db.First(&m, "id = ?", id).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
+	if isNotFound(err) {
 		return nil, domainrepo.ErrServiceNotFound
 	}
 	if err != nil {

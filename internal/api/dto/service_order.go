@@ -7,10 +7,26 @@ import (
 	"github.com/gabrielcamargo/oficina-api/internal/domain/valueobject"
 )
 
+type CreateServiceOrderPartRequest struct {
+	PartID   string `json:"part_id" binding:"required"`
+	Quantity int    `json:"quantity" binding:"required,gt=0"`
+}
+
 type CreateServiceOrderRequest struct {
-	CustomerID string `json:"customer_id" binding:"required"`
-	VehicleID  string `json:"vehicle_id" binding:"required"`
-	Notes      string `json:"notes"`
+	CustomerID string                          `json:"customer_id" binding:"required"`
+	VehicleID  string                          `json:"vehicle_id" binding:"required"`
+	Notes      string                          `json:"notes"`
+	Services   []string                        `json:"services"`
+	Parts      []CreateServiceOrderPartRequest `json:"parts"`
+}
+
+const (
+	BudgetDecisionApproved = "approved"
+	BudgetDecisionRejected = "rejected"
+)
+
+type BudgetApprovalWebhookRequest struct {
+	Decision string `json:"decision" binding:"required,oneof=approved rejected"`
 }
 
 type AddServiceToOrderRequest struct {

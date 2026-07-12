@@ -7,6 +7,7 @@ package mocks
 import (
 	"github.com/gabrielcamargo/oficina-api/internal/domain/entity"
 	"github.com/gabrielcamargo/oficina-api/internal/domain/repository"
+	"github.com/gabrielcamargo/oficina-api/internal/domain/valueobject"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -140,57 +141,64 @@ func (_c *MockServiceOrderRepository_Create_Call) RunAndReturn(run func(order *e
 	return _c
 }
 
-// FindAll provides a mock function for the type MockServiceOrderRepository
-func (_mock *MockServiceOrderRepository) FindAll() ([]*entity.ServiceOrder, error) {
-	ret := _mock.Called()
+// FindByStatuses provides a mock function for the type MockServiceOrderRepository
+func (_mock *MockServiceOrderRepository) FindByStatuses(statuses []valueobject.OrderStatus) ([]*entity.ServiceOrder, error) {
+	ret := _mock.Called(statuses)
 
 	if len(ret) == 0 {
-		panic("no return value specified for FindAll")
+		panic("no return value specified for FindByStatuses")
 	}
 
 	var r0 []*entity.ServiceOrder
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func() ([]*entity.ServiceOrder, error)); ok {
-		return returnFunc()
+	if returnFunc, ok := ret.Get(0).(func([]valueobject.OrderStatus) ([]*entity.ServiceOrder, error)); ok {
+		return returnFunc(statuses)
 	}
-	if returnFunc, ok := ret.Get(0).(func() []*entity.ServiceOrder); ok {
-		r0 = returnFunc()
+	if returnFunc, ok := ret.Get(0).(func([]valueobject.OrderStatus) []*entity.ServiceOrder); ok {
+		r0 = returnFunc(statuses)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*entity.ServiceOrder)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func() error); ok {
-		r1 = returnFunc()
+	if returnFunc, ok := ret.Get(1).(func([]valueobject.OrderStatus) error); ok {
+		r1 = returnFunc(statuses)
 	} else {
 		r1 = ret.Error(1)
 	}
 	return r0, r1
 }
 
-// MockServiceOrderRepository_FindAll_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindAll'
-type MockServiceOrderRepository_FindAll_Call struct {
+// MockServiceOrderRepository_FindByStatuses_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindByStatuses'
+type MockServiceOrderRepository_FindByStatuses_Call struct {
 	*mock.Call
 }
 
-// FindAll is a helper method to define mock.On call
-func (_e *MockServiceOrderRepository_Expecter) FindAll() *MockServiceOrderRepository_FindAll_Call {
-	return &MockServiceOrderRepository_FindAll_Call{Call: _e.mock.On("FindAll")}
+// FindByStatuses is a helper method to define mock.On call
+//   - statuses []valueobject.OrderStatus
+func (_e *MockServiceOrderRepository_Expecter) FindByStatuses(statuses interface{}) *MockServiceOrderRepository_FindByStatuses_Call {
+	return &MockServiceOrderRepository_FindByStatuses_Call{Call: _e.mock.On("FindByStatuses", statuses)}
 }
 
-func (_c *MockServiceOrderRepository_FindAll_Call) Run(run func()) *MockServiceOrderRepository_FindAll_Call {
+func (_c *MockServiceOrderRepository_FindByStatuses_Call) Run(run func(statuses []valueobject.OrderStatus)) *MockServiceOrderRepository_FindByStatuses_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		var arg0 []valueobject.OrderStatus
+		if args[0] != nil {
+			arg0 = args[0].([]valueobject.OrderStatus)
+		}
+		run(
+			arg0,
+		)
 	})
 	return _c
 }
 
-func (_c *MockServiceOrderRepository_FindAll_Call) Return(serviceOrders []*entity.ServiceOrder, err error) *MockServiceOrderRepository_FindAll_Call {
+func (_c *MockServiceOrderRepository_FindByStatuses_Call) Return(serviceOrders []*entity.ServiceOrder, err error) *MockServiceOrderRepository_FindByStatuses_Call {
 	_c.Call.Return(serviceOrders, err)
 	return _c
 }
 
-func (_c *MockServiceOrderRepository_FindAll_Call) RunAndReturn(run func() ([]*entity.ServiceOrder, error)) *MockServiceOrderRepository_FindAll_Call {
+func (_c *MockServiceOrderRepository_FindByStatuses_Call) RunAndReturn(run func(statuses []valueobject.OrderStatus) ([]*entity.ServiceOrder, error)) *MockServiceOrderRepository_FindByStatuses_Call {
 	_c.Call.Return(run)
 	return _c
 }
