@@ -7,10 +7,11 @@ import (
 
 type FinishExecutionUseCase struct {
 	orderRepo repository.ServiceOrderRepository
+	notifier  StatusNotifier
 }
 
-func NewFinishExecutionUseCase(orderRepo repository.ServiceOrderRepository) *FinishExecutionUseCase {
-	return &FinishExecutionUseCase{orderRepo: orderRepo}
+func NewFinishExecutionUseCase(orderRepo repository.ServiceOrderRepository, notifier StatusNotifier) *FinishExecutionUseCase {
+	return &FinishExecutionUseCase{orderRepo: orderRepo, notifier: notifier}
 }
 
 func (u *FinishExecutionUseCase) Execute(orderID string) (*entity.ServiceOrder, error) {
@@ -26,6 +27,8 @@ func (u *FinishExecutionUseCase) Execute(orderID string) (*entity.ServiceOrder, 
 	if err := u.orderRepo.Update(order); err != nil {
 		return nil, err
 	}
+
+	u.notifier.Notify(order)
 
 	return order, nil
 }

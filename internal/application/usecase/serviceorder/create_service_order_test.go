@@ -12,6 +12,10 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+type noopNotifier struct{}
+
+func (noopNotifier) Notify(*entity.ServiceOrder) {}
+
 func makeOrder() *entity.ServiceOrder {
 	order, _ := entity.NewServiceOrder("customer-id", "vehicle-id", "noise in engine")
 	return order
@@ -191,7 +195,7 @@ func TestApproveBudget_ShouldDebitStockAndTransitionStatus(t *testing.T) {
 	partRepo.On("Update", mock.Anything).Return(nil)
 	orderRepo.On("Update", mock.Anything).Return(nil)
 
-	uc := serviceorder.NewApproveBudgetUseCase(orderRepo, partRepo)
+	uc := serviceorder.NewApproveBudgetUseCase(orderRepo, partRepo, noopNotifier{})
 	result, err := uc.Execute("order-id")
 
 	assert.NoError(t, err)
@@ -206,7 +210,7 @@ func TestRejectBudget_ShouldCancelOrder(t *testing.T) {
 	orderRepo.On("FindByID", "order-id").Return(order, nil)
 	orderRepo.On("Update", mock.Anything).Return(nil)
 
-	uc := serviceorder.NewRejectBudgetUseCase(orderRepo)
+	uc := serviceorder.NewRejectBudgetUseCase(orderRepo, noopNotifier{})
 	result, err := uc.Execute("order-id")
 
 	assert.NoError(t, err)
@@ -228,13 +232,13 @@ func TestFullServiceOrderFlow(t *testing.T) {
 	partRepo.On("FindByID", part.ID()).Return(part, nil)
 	partRepo.On("Update", mock.Anything).Return(nil)
 
-	startUC := serviceorder.NewStartDiagnosisUseCase(orderRepo)
+	startUC := serviceorder.NewStartDiagnosisUseCase(orderRepo, noopNotifier{})
 	addSvcUC := serviceorder.NewAddServiceToOrderUseCase(orderRepo, serviceRepo)
 	addPartUC := serviceorder.NewAddPartToOrderUseCase(orderRepo, partRepo)
-	sendBudgetUC := serviceorder.NewSendBudgetUseCase(orderRepo)
-	approveUC := serviceorder.NewApproveBudgetUseCase(orderRepo, partRepo)
-	finishExecUC := serviceorder.NewFinishExecutionUseCase(orderRepo)
-	deliverUC := serviceorder.NewDeliverVehicleUseCase(orderRepo)
+	sendBudgetUC := serviceorder.NewSendBudgetUseCase(orderRepo, noopNotifier{})
+	approveUC := serviceorder.NewApproveBudgetUseCase(orderRepo, partRepo, noopNotifier{})
+	finishExecUC := serviceorder.NewFinishExecutionUseCase(orderRepo, noopNotifier{})
+	deliverUC := serviceorder.NewDeliverVehicleUseCase(orderRepo, noopNotifier{})
 
 	startUC.Execute("order-id")
 	addSvcUC.Execute(serviceorder.AddServiceToOrderInput{OrderID: "order-id", ServiceID: svc.ID()})
