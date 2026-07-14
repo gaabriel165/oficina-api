@@ -258,6 +258,8 @@ kubectl get service oficina-api -n oficina-api
 
 ## Endpoints da API
 
+> Base URL: `http://<host>:8080/api/v1`
+
 ### Autenticação (público)
 | Método | Caminho | Descrição |
 |---|---|---|
