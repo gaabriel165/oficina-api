@@ -17,9 +17,9 @@ Back-end do **Sistema Integrado de Atendimento e Execução de Serviços** de um
 ## Links
 
 - **Collection das APIs (Insomnia):** [`insomnia-collection.json`](./insomnia-collection.json)
-- **Swagger (com a aplicação no ar):** `http://<host>:8080/swagger/index.html`
+- **Swagger (com a aplicação no ar):** `http://<load-balancer-host>/swagger/index.html`
 - **Documentação DDD (Event Storming):** [miro.com/app/board/uXjVHZWTzN0=/](https://miro.com/app/board/uXjVHZWTzN0=/)
-- **Vídeo demonstrativo:** _(adicionar link do YouTube/Vimeo)_
+- **Vídeo demonstrativo:** https://youtu.be/KcicodFkWag
 
 ---
 
