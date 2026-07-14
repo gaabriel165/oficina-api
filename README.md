@@ -1,5 +1,7 @@
 # Tech Challenge — Oficina Mecânica API
 
+[![CI](https://github.com/gaabriel165/oficina-api/actions/workflows/ci.yml/badge.svg)](https://github.com/gaabriel165/oficina-api/actions/workflows/ci.yml)
+
 Back-end do **Sistema Integrado de Atendimento e Execução de Serviços** de uma oficina mecânica, desenvolvido para o Tech Challenge da pós-graduação em Arquitetura de Software (FIAP SOAT).
 
 - **Fase 1** — MVP com gestão de ordens de serviço, clientes, veículos, peças e serviços, aplicando DDD, JWT e testes.
