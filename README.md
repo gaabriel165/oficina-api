@@ -1,74 +1,168 @@
 # Tech Challenge — Oficina Mecânica API
 
-## Sobre o Projeto
+Back-end do **Sistema Integrado de Atendimento e Execução de Serviços** de uma oficina mecânica, desenvolvido para o Tech Challenge da pós-graduação em Arquitetura de Software (FIAP SOAT).
 
-Uma oficina mecânica de médio porte enfrentava dificuldades para gerenciar seus atendimentos com anotações manuais e planilhas, gerando erros na priorização, falhas no controle de peças e perda de histórico de clientes.
+- **Fase 1** — MVP com gestão de ordens de serviço, clientes, veículos, peças e serviços, aplicando DDD, JWT e testes.
+- **Fase 2** — evolução para **qualidade, resiliência e escalabilidade**: refatoração em Clean Architecture, containerização, orquestração em Kubernetes (EKS), infraestrutura como código (Terraform) e pipeline de CI/CD.
 
-Este projeto é o MVP do back-end do **Sistema Integrado de Atendimento e Execução de Serviços**, desenvolvido como Tech Challenge Fase 1 da pós-graduação em Arquitetura de Software (FIAP SOAT).
+## Objetivos da Fase 2
 
-A solução foi construída aplicando **Domain-Driven Design (DDD)** com arquitetura em camadas, focando em:
-- Gestão completa do ciclo de vida das ordens de serviço
-- Controle de clientes, veículos, peças e serviços
-- Fluxo de orçamentos com aprovação/rejeição pelo cliente
-- Autenticação JWT para operações administrativas
-- Consulta pública de status da OS pelo cliente
+- **Clean Architecture / Hexagonal** — separação estrita de camadas e inversão de dependências.
+- **Novas APIs** — abertura de OS em chamada única, consulta de status, listagem priorizada, webhook de aprovação de orçamento e notificação de status por e-mail.
+- **Escalabilidade** — Horizontal Pod Autoscaler escalando por CPU sob carga.
+- **Automação** — provisionamento (Terraform) e deploy (CI/CD) reproduzíveis.
 
-## Documentação DDD
+## Links
 
-- **Event Storming e diagramas:** [miro.com/app/board/uXjVHZWTzN0=/](https://miro.com/app/board/uXjVHZWTzN0=/)
-- **Linguagem Ubíqua:** [`linguagem-ubiqua.md`](./linguagem-ubiqua.md)
+- **Collection das APIs (Insomnia):** [`insomnia-collection.json`](./insomnia-collection.json)
+- **Swagger (com a aplicação no ar):** `http://<host>:8080/swagger/index.html`
+- **Documentação DDD (Event Storming):** [miro.com/app/board/uXjVHZWTzN0=/](https://miro.com/app/board/uXjVHZWTzN0=/)
+- **Vídeo demonstrativo:** _(adicionar link do YouTube/Vimeo)_
 
-## Stack
-
-- **Go 1.25** — linguagem principal
-- **Gin** — framework HTTP
-- **GORM** — ORM para PostgreSQL
-- **PostgreSQL 16** — banco de dados relacional
-- **golang-migrate** — migrations versionadas
-- **golang-jwt/jwt** — autenticação via JWT
-- **swaggo/swag** — documentação Swagger
-- **Testify** — assertions para testes unitários
-- **Mockery** — geração automática de mocks a partir das interfaces de repositório
-- **testcontainers-go** — testes de integração com PostgreSQL real
-
-## Por que PostgreSQL?
-
-O PostgreSQL foi escolhido pelos seguintes motivos:
-
-- **Modelo relacional adequado ao domínio:** as entidades do sistema (clientes, veículos, ordens de serviço, peças) possuem relacionamentos bem definidos e consistência transacional crítica — cenário ideal para banco relacional.
-- **Integridade referencial:** chaves estrangeiras garantem que uma OS não pode referenciar um veículo ou cliente inexistente sem tratamento explícito.
-- **Suporte a tipos avançados:** uso de `UUID` como chave primária, `TIMESTAMPTZ` para datas e `NUMERIC` para valores monetários sem perda de precisão.
-- **Migrations versionadas:** o ecossistema Go tem suporte maduro para PostgreSQL com `golang-migrate`, permitindo evoluir o schema de forma controlada.
-- **Maturidade e confiabilidade:** amplamente adotado em sistemas de produção, com excelente suporte a transações ACID — essencial para operações como aprovação de orçamento e débito de estoque que devem ser atômicas.
+---
 
 ## Arquitetura
 
-O projeto segue arquitetura em camadas baseada em DDD:
+### 1. Componentes da aplicação (Clean Architecture)
+
+As dependências apontam sempre **para dentro**: a API depende dos casos de uso, que dependem do domínio. A infraestrutura implementa as **portas** (interfaces) definidas no domínio — nada do domínio conhece framework, banco ou HTTP.
+
+```mermaid
+flowchart TD
+    subgraph API["API — Frameworks & Drivers (Gin)"]
+        H[Handlers]
+        MW[Middlewares JWT / Webhook]
+        DTO[DTOs + mapeamento de erros]
+    end
+    subgraph APP["Application — Casos de Uso"]
+        UC[Use Cases: serviceorder, customer, vehicle, part, service, auth]
+    end
+    subgraph DOM["Domain — Entidades e Regras"]
+        ENT[Entities]
+        VO[Value Objects: CPF, CNPJ, Plate, OrderStatus]
+        PORT[Ports: Repository / NotificationService / CNPJValidationService]
+    end
+    subgraph INFRA["Infrastructure — Adapters"]
+        GORM[Repositórios GORM + PostgreSQL]
+        RESEND[Resend Notifier]
+        BRASIL[BrasilAPI Client]
+    end
+
+    H --> UC
+    MW --> UC
+    UC --> PORT
+    UC --> ENT
+    ENT --> VO
+    GORM -. implementa .-> PORT
+    RESEND -. implementa .-> PORT
+    BRASIL -. implementa .-> PORT
+```
+
+### 2. Infraestrutura provisionada (AWS)
+
+```mermaid
+flowchart LR
+    User[Cliente / Internet]
+    Resend[Resend API - e-mail]
+
+    subgraph AWS["AWS us-east-1"]
+        ECR[(ECR - imagem Docker)]
+        subgraph VPC["VPC"]
+            subgraph Pub["Subnets publicas"]
+                NLB[Network Load Balancer]
+            end
+            subgraph Priv["Subnets privadas"]
+                subgraph EKS["EKS - node group 2x t3.small"]
+                    POD1[Pod oficina-api]
+                    POD2[Pod oficina-api]
+                    HPA[HPA 2..6 por CPU]
+                end
+                RDS[(RDS PostgreSQL)]
+            end
+        end
+    end
+
+    User --> NLB
+    NLB --> POD1
+    NLB --> POD2
+    POD1 --> RDS
+    POD2 --> RDS
+    POD1 --> Resend
+    HPA -. escala .-> POD2
+    EKS -. pull da imagem .-> ECR
+```
+
+### 3. Fluxo de deploy (CI/CD)
+
+```mermaid
+flowchart LR
+    Dev[Desenvolvedor] -->|git push| GH[GitHub]
+    GH -->|push / PR| CI["CI (ci.yml)<br/>build + vet + testes"]
+    GH -->|push na main| CD["CD (cd.yml)"]
+    CD -->|OIDC assume role| STS[AWS STS]
+    CD -->|build + push| ECR[(ECR)]
+    CD -->|update-kubeconfig<br/>kubectl apply -k| EKS[EKS]
+    EKS -->|pull| ECR
+```
+
+---
+
+## Clean Architecture — a regra de dependência
+
+| Camada | Pasta | Responsabilidade | Depende de |
+|---|---|---|---|
+| **Domain** | `internal/domain` | Entidades, value objects, regras de negócio e **portas** (interfaces) | nada externo |
+| **Application** | `internal/application` | Casos de uso (um por operação); orquestra o domínio | apenas do domínio |
+| **Infrastructure** | `internal/infrastructure` | Adapters: GORM/PostgreSQL, Resend, BrasilAPI | implementa portas do domínio |
+| **API** | `internal/api` | Handlers Gin, middlewares, DTOs, mapeamento de erros | dos casos de uso |
+
+Princípios aplicados:
+- **Inversão de dependência** — casos de uso dependem de interfaces (`ServiceOrderRepository`, `NotificationService`), não de implementações. Trocar PostgreSQL, o provedor de e-mail ou o webhook não toca o domínio nem os casos de uso.
+- **Domínio sem frameworks** — nenhum import de Gin, GORM, JWT ou HTTP no pacote `domain`.
+- **Composition root único** — a montagem concreta (repos, adapters, use cases) acontece só no `internal/api/server.go`.
+- **Entidades ricas** — invariantes e transições de estado da OS vivem na entidade, não em serviços anêmicos.
+
+### Estrutura de pastas
 
 ```
-cmd/                        → entrypoint da aplicação
-configs/                    → carregamento de variáveis de ambiente
+cmd/api/                  → entrypoint
+configs/                  → carregamento de variáveis de ambiente
 internal/
-  domain/
-    entity/                 → entidades de domínio com comportamento e regras de negócio
-    repository/             → interfaces de repositório e erros de domínio
-    valueobject/            → value objects (CPF, CNPJ, Plate, OrderStatus)
-  application/
-    usecase/                → casos de uso (um por operação)
-    mocks/                  → mocks Testify para testes unitários
-  infrastructure/
-    database/               → conexão com o banco, migrations, models GORM
-    repository/             → implementações GORM dos repositórios
-    external/               → clientes de APIs externas (Brasil API para validação de CNPJ)
-  api/
-    handler/                → handlers Gin (rotas definidas por domínio)
-    middleware/             → middleware JWT de autenticação
-    dto/                    → DTOs de request/response
-    response/               → mapeador centralizado de erros para HTTP
-    server.go               → montagem do servidor (rotas, repositórios, casos de uso)
-migrations/                 → migrations SQL versionadas (golang-migrate)
-docs/                       → documentação Swagger (gerada automaticamente)
+  domain/                 → entities, value objects, ports (interfaces), erros de domínio
+  application/usecase/     → casos de uso (um por operação) + mocks
+  infrastructure/          → GORM (PostgreSQL), Resend (e-mail), BrasilAPI, migrations
+  api/                     → handlers, middlewares, DTOs, mapeamento de erros, server.go
+migrations/               → migrations SQL versionadas (golang-migrate)
+docs/                     → Swagger gerado
+k8s/                      → manifestos Kubernetes (kustomize)
+infra/                    → Terraform (VPC, EKS, RDS, ECR, OIDC)
+.github/workflows/         → pipelines de CI e CD
 ```
+
+---
+
+## Stack
+
+| Categoria | Tecnologias |
+|---|---|
+| **Aplicação** | Go 1.25, Gin, GORM, golang-migrate, golang-jwt |
+| **Banco** | PostgreSQL 16 (local via Docker, produção via RDS) |
+| **E-mail** | Resend (adapter atrás de porta `NotificationService`) |
+| **Testes** | Testify, Mockery, testcontainers-go |
+| **Container** | Docker (multi-stage, imagem estática non-root) |
+| **Orquestração** | Kubernetes (AWS EKS) + kustomize + HPA |
+| **IaC** | Terraform (VPC, EKS, RDS, ECR, IAM/OIDC) |
+| **CI/CD** | GitHub Actions (OIDC, sem chave estática) |
+
+### Por que PostgreSQL?
+
+- **Modelo relacional** adequado às entidades e à consistência transacional (aprovação de orçamento + débito de estoque atômicos).
+- **Integridade referencial** via chaves estrangeiras.
+- **Tipos avançados**: `UUID`, `TIMESTAMPTZ`, `NUMERIC` para valores monetários.
+- **Migrations versionadas** maduras no ecossistema Go (`golang-migrate`).
+- **RDS gerenciado** em produção: backups, criptografia e escalabilidade sem gestão manual.
+
+---
 
 ## Conceitos de Domínio
 
@@ -76,151 +170,136 @@ docs/                       → documentação Swagger (gerada automaticamente)
 |---|---|
 | **User** | Operador do sistema — autenticado via e-mail/senha, recebe JWT |
 | **Customer** | Proprietário do veículo — identificado por CPF ou CNPJ |
-| **Vehicle** | Pertence a um Customer — identificado pela placa (formato antigo ou Mercosul) |
-| **Service** | Mão de obra oferecida pela oficina (ex: Troca de Óleo) |
-| **Part** | Peça física com controle de estoque (ex: Filtro de Óleo) |
-| **ServiceOrder** | Agregado principal — controla todo o ciclo de vida de um reparo |
+| **Vehicle** | Pertence a um Customer — placa (formato antigo ou Mercosul) |
+| **Service** | Mão de obra oferecida (ex: Troca de Óleo) |
+| **Part** | Peça física com controle de estoque |
+| **ServiceOrder** | Agregado principal — controla o ciclo de vida do reparo |
 
-### Fluxo de Status da Ordem de Serviço
+### Fluxo de status da Ordem de Serviço
 
 ```
 received → in_diagnosis → waiting_approval → in_execution → finished → delivered
-                                          ↘ cancelled (quando orçamento é rejeitado)
+                                          ↘ cancelled (orçamento rejeitado)
 ```
+
+Cada transição dispara uma **notificação por e-mail** ao cliente (best-effort — falha de e-mail não interrompe a operação).
+
+---
 
 ## Como Executar
 
-### Pré-requisitos
-
-- Docker e Docker Compose
-
-### Inicialização
+### A) Local (docker-compose)
 
 ```bash
-# 1. Copiar e configurar as variáveis de ambiente
-cp .env.example .env
-
-# 2. Subir a aplicação e o banco de dados
-docker-compose up
+cp .env.example .env      # ajuste as variáveis
+docker-compose up --build
 ```
 
-A API estará disponível em `http://localhost:8080`.  
-A documentação Swagger estará disponível em `http://localhost:8080/swagger/index.html`.
+- API: `http://localhost:8080` · Swagger: `http://localhost:8080/swagger/index.html`
+- Sobe a aplicação + PostgreSQL; migrations e seed rodam automaticamente no startup.
 
-### Variáveis de Ambiente
+### B) Provisionar a infraestrutura (Terraform)
 
-| Variável | Descrição | Exemplo |
-|---|---|---|
-| `SERVER_PORT` | Porta do servidor HTTP | `8080` |
-| `DATABASE_URL` | String de conexão com o PostgreSQL | `postgres://postgres:postgres@postgres:5432/oficina_mecanica?sslmode=disable` |
-| `JWT_SECRET` | Chave secreta para assinatura do JWT | `sua_chave_secreta` |
+Pré-requisitos: conta AWS, AWS CLI configurado, Terraform.
+
+```bash
+cd infra
+terraform init
+terraform plan            # revisa o que será criado
+terraform apply           # provisiona VPC, EKS, RDS, ECR, OIDC (~20 min)
+
+# conectar kubectl ao cluster:
+aws eks update-kubeconfig --name oficina-api-eks --region us-east-1
+```
+
+Recursos criados: VPC (subnets públicas/privadas + NAT), cluster **EKS**, **RDS PostgreSQL** privado, repositório **ECR** e o **role OIDC** para o GitHub Actions. Saídas úteis: `terraform output`. Para remover tudo: `terraform destroy`.
+
+### C) Deploy em Kubernetes
+
+O **CD faz isso automaticamente** no push para `main`. Manualmente:
+
+```bash
+# 1. metrics-server (pré-requisito do HPA)
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
+# 2. Secret da aplicação (a partir dos outputs do Terraform + suas chaves)
+kubectl create namespace oficina-api
+kubectl create secret generic oficina-api-secrets -n oficina-api \
+  --from-literal=DATABASE_URL="$(terraform -chdir=infra output -raw database_url)" \
+  --from-literal=JWT_SECRET="..." \
+  --from-literal=WEBHOOK_SECRET="..." \
+  --from-literal=RESEND_API_KEY="re_..."
+
+# 3. apontar a imagem do ECR e aplicar
+cd k8s
+kustomize edit set image oficina-api=$(terraform -chdir=../infra output -raw ecr_repository_url):latest
+kubectl apply -k .
+
+# 4. URL pública
+kubectl get service oficina-api -n oficina-api
+```
+
+---
+
+## Variáveis de Ambiente
+
+| Variável | Descrição |
+|---|---|
+| `SERVER_PORT` | Porta HTTP (padrão `8080`) |
+| `DATABASE_URL` | String de conexão do PostgreSQL |
+| `JWT_SECRET` | Chave de assinatura do JWT |
+| `WEBHOOK_SECRET` | Segredo do webhook de aprovação de orçamento |
+| `RESEND_API_KEY` | Chave da API do Resend (e-mail) |
+| `EMAIL_FROM` | Remetente dos e-mails (ex.: `onboarding@resend.dev`) |
+
+---
 
 ## Endpoints da API
 
-### Autenticação
-
-| Método | Caminho | Auth | Descrição |
-|---|---|---|---|
-| POST | `/api/v1/auth/register` | Não | Criar conta de usuário |
-| POST | `/api/v1/auth/login` | Não | Autenticar e receber JWT |
-
-Todas as demais rotas exigem o header:
-```
-Authorization: Bearer <token>
-```
-
-### Clientes
-
-| Método | Caminho | Auth | Descrição |
-|---|---|---|---|
-| GET | `/api/v1/customers` | Sim | Listar todos os clientes |
-| POST | `/api/v1/customers` | Sim | Cadastrar cliente (CPF ou CNPJ) |
-| GET | `/api/v1/customers/:id` | Sim | Buscar cliente por ID |
-| PUT | `/api/v1/customers/:id` | Sim | Atualizar cliente |
-| DELETE | `/api/v1/customers/:id` | Sim | Remover cliente |
-
-### Veículos
-
-| Método | Caminho | Auth | Descrição |
-|---|---|---|---|
-| GET | `/api/v1/vehicles` | Sim | Listar todos os veículos |
-| POST | `/api/v1/vehicles` | Sim | Cadastrar veículo |
-| GET | `/api/v1/vehicles/:id` | Sim | Buscar veículo por ID |
-| PUT | `/api/v1/vehicles/:id` | Sim | Atualizar veículo |
-| DELETE | `/api/v1/vehicles/:id` | Sim | Remover veículo |
-
-### Peças
-
-| Método | Caminho | Auth | Descrição |
-|---|---|---|---|
-| GET | `/api/v1/parts` | Sim | Listar todas as peças |
-| POST | `/api/v1/parts` | Sim | Cadastrar peça |
-| GET | `/api/v1/parts/:id` | Sim | Buscar peça por ID |
-| PUT | `/api/v1/parts/:id` | Sim | Atualizar peça |
-| DELETE | `/api/v1/parts/:id` | Sim | Remover peça |
-| PATCH | `/api/v1/parts/:id/stock` | Sim | Adicionar ao estoque |
-
-### Serviços
-
-| Método | Caminho | Auth | Descrição |
-|---|---|---|---|
-| GET | `/api/v1/services` | Sim | Listar todos os serviços |
-| POST | `/api/v1/services` | Sim | Cadastrar serviço |
-| GET | `/api/v1/services/:id` | Sim | Buscar serviço por ID |
-| PUT | `/api/v1/services/:id` | Sim | Atualizar serviço |
-| DELETE | `/api/v1/services/:id` | Sim | Remover serviço |
+### Autenticação (público)
+| Método | Caminho | Descrição |
+|---|---|---|
+| POST | `/api/v1/auth/register` | Criar usuário |
+| POST | `/api/v1/auth/login` | Autenticar e receber JWT |
 
 ### Ordens de Serviço
-
 | Método | Caminho | Auth | Descrição |
 |---|---|---|---|
-| GET | `/api/v1/service-orders/:id/status` | **Não** | Consulta pública de status pelo cliente |
-| GET | `/api/v1/service-orders` | Sim | Listar todas as ordens de serviço |
-| POST | `/api/v1/service-orders` | Sim | Criar ordem de serviço |
-| GET | `/api/v1/service-orders/:id` | Sim | Buscar ordem de serviço por ID |
-| GET | `/api/v1/service-orders/metrics` | Sim | Tempo médio de execução por serviço |
-| PATCH | `/api/v1/service-orders/:id/start-diagnosis` | Sim | Iniciar diagnóstico |
-| POST | `/api/v1/service-orders/:id/services` | Sim | Adicionar serviço à ordem |
-| POST | `/api/v1/service-orders/:id/parts` | Sim | Adicionar peça à ordem |
-| PATCH | `/api/v1/service-orders/:id/send-budget` | Sim | Enviar orçamento ao cliente |
-| PATCH | `/api/v1/service-orders/:id/approve-budget` | Sim | Aprovar orçamento |
-| PATCH | `/api/v1/service-orders/:id/reject-budget` | Sim | Rejeitar orçamento |
-| PATCH | `/api/v1/service-orders/:id/finish-execution` | Sim | Marcar execução como concluída |
-| PATCH | `/api/v1/service-orders/:id/deliver` | Sim | Entregar veículo ao cliente |
+| POST | `/api/v1/service-orders` | JWT | Abrir OS (aceita cliente, veículo, **serviços e peças** na mesma chamada) |
+| GET | `/api/v1/service-orders` | JWT | Listar OS **ativas**, ordenadas por urgência (mais antigas primeiro); exclui finalizadas/entregues |
+| GET | `/api/v1/service-orders/{id}` | JWT | Detalhar OS |
+| GET | `/api/v1/service-orders/{id}/status` | **Público** | Consulta de status pelo cliente |
+| GET | `/api/v1/service-orders/metrics` | JWT | Tempo médio de execução por serviço |
+| POST | `/api/v1/service-orders/{id}/budget-approval` | **Webhook** | Aprovação/recusa externa (`X-Webhook-Secret`) |
+| PATCH | `/api/v1/service-orders/{id}/start-diagnosis` | JWT | Iniciar diagnóstico |
+| POST | `/api/v1/service-orders/{id}/services` · `/parts` | JWT | Adicionar serviço / peça |
+| PATCH | `.../send-budget` · `/approve-budget` · `/reject-budget` · `/finish-execution` · `/deliver` | JWT | Transições de status |
+
+### CRUDs administrativos (JWT)
+`/api/v1/customers`, `/api/v1/vehicles`, `/api/v1/parts` (+ `PATCH /{id}/stock`), `/api/v1/services` — todos com `GET` (lista), `POST`, `GET/{id}`, `PUT/{id}`, `DELETE/{id}`.
+
+---
 
 ## Testes
 
-### Testes Unitários
-
 ```bash
-go test ./internal/domain/... ./internal/application/usecase/...
+# unitários (domínio + casos de uso + api)
+go test ./internal/domain/... ./internal/application/... ./internal/api/...
+
+# integração (sobe PostgreSQL via testcontainers — requer Docker)
+go test ./internal/integration/... -timeout 300s
+
+# cobertura
+go test ./internal/... -coverprofile=coverage.out && go tool cover -func=coverage.out
 ```
 
-### Testes de Integração
+Cobertura atual: **~88%** (acima do mínimo de 80% exigido).
 
-Requerem o Docker em execução. Cada teste sobe um container PostgreSQL isolado via testcontainers-go.
+## CI/CD
 
-```bash
-go test ./internal/integration/... -timeout 120s
-```
+- **`ci.yml`** — em todo push/PR: `build`, `vet` e testes (unitários + integração). Não toca a AWS.
+- **`cd.yml`** — no push para `main`: autentica na AWS via **OIDC**, builda e publica a imagem no **ECR**, e faz o deploy no **EKS** (`kubectl apply -k`), incluindo metrics-server e o Secret da aplicação.
 
-### Todos os Testes com Cobertura
-
-```bash
-go test ./internal/domain/... ./internal/application/usecase/... -coverprofile=coverage.out
-go tool cover -html=coverage.out -o coverage.html
-```
-
-## Desenvolvimento
-
-### Regenerar Documentação Swagger
-
-```bash
-~/go/bin/darwin_amd64/swag init -g cmd/api/main.go --output docs
-```
-
-### Criar Nova Migration
-
-```bash
-migrate create -ext sql -dir migrations -seq <nome_da_migration>
-```
+Configuração no GitHub (Settings → Secrets and variables → Actions):
+- **Variables:** `AWS_REGION`, `EKS_CLUSTER_NAME`, `ECR_REPOSITORY_URL`
+- **Secrets:** `AWS_ROLE_ARN`, `DATABASE_URL`, `JWT_SECRET`, `WEBHOOK_SECRET`, `RESEND_API_KEY`
