@@ -643,13 +643,14 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "Operators see every active order sorted by urgency; customers authenticated by CPF see only their own.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "service-orders"
                 ],
-                "summary": "List all service orders",
+                "summary": "List active service orders",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -742,6 +743,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "Operators can read any order; customers authenticated by CPF can only read their own.",
                 "produces": [
                     "application/json"
                 ],
@@ -765,6 +767,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/dto.ServiceOrderResponse"
                         }
                     },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
@@ -781,6 +789,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "Customers authenticated by CPF can only approve their own order.",
                 "produces": [
                     "application/json"
                 ],
@@ -1050,6 +1059,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "Customers authenticated by CPF can only reject their own order.",
                 "produces": [
                     "application/json"
                 ],

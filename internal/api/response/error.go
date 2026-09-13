@@ -88,5 +88,9 @@ func statusFromError(err error) int {
 		return http.StatusUnauthorized
 	}
 
+	if errors.Is(err, usecase.ErrForbidden) {
+		return http.StatusForbidden
+	}
+
 	return http.StatusInternalServerError
 }
