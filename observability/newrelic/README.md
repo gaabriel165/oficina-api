@@ -27,7 +27,7 @@ ONLY_SYNTHETICS=true HEALTH_URL=https://<api-id>.execute-api.us-east-1.amazonaws
 Cria:
 
 - **Dashboard "Oficina API — Operação"** (`dashboard.json`): volume diário de OS, tempo médio por status, falhas de OS, erros de integração, latência p50/p95/p99 e por rota, throughput, status HTTP, tempo em banco, CPU/memória por pod, réplicas do HPA, CPU dos nós e uptime.
-- **Política de alertas "Oficina API"** com condições NRQL:
+- **Política de alertas "Oficina API"** com condições NRQL (agregação `CADENCE`, janela de 60 s e atraso de 120 s — necessária porque eventos como `service_order.failed` são esparsos e, com `EVENT_FLOW`, a janela só fecharia quando chegasse o próximo evento):
   - falha no processamento de OS (`service_order.failed` > 0 em 5 min);
   - erros de integração (`integration.error` > 2 em 5 min);
   - erros 5xx na API;
