@@ -1,10 +1,15 @@
 package api
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"log/slog"
+	"net/http"
+	"time"
 
-	_ "github.com/gabrielcamargo/oficina-api/docs"
 	"github.com/gabrielcamargo/oficina-api/configs"
+	_ "github.com/gabrielcamargo/oficina-api/docs"
 	"github.com/gabrielcamargo/oficina-api/internal/api/handler"
 	"github.com/gabrielcamargo/oficina-api/internal/api/middleware"
 	"github.com/gabrielcamargo/oficina-api/internal/application/usecase/auth"
@@ -19,22 +24,35 @@ import (
 	"github.com/gin-gonic/gin"
 	swaggerfiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"gorm.io/gorm"
 )
 
 type Server struct {
-	router *gin.Engine
-	config *configs.Config
-	db     *gorm.DB
+	router     *gin.Engine
+	config     *configs.Config
+	db         *gorm.DB
+	httpServer *http.Server
 }
 
 func NewServer(cfg *configs.Config, db *gorm.DB) *Server {
-	router := gin.Default()
+	router := gin.New()
+	router.Use(
+		gin.CustomRecovery(recoverWithLog),
+		otelgin.Middleware(cfg.ServiceName),
+		middleware.RequestID(),
+		middleware.RequestLogger(),
+	)
 
 	server := &Server{
 		router: router,
 		config: cfg,
 		db:     db,
+		httpServer: &http.Server{
+			Addr:              fmt.Sprintf(":%s", cfg.ServerPort),
+			Handler:           router,
+			ReadHeaderTimeout: 10 * time.Second,
+		},
 	}
 
 	server.registerRoutes()
@@ -43,7 +61,22 @@ func NewServer(cfg *configs.Config, db *gorm.DB) *Server {
 }
 
 func (s *Server) Run() error {
-	return s.router.Run(fmt.Sprintf(":%s", s.config.ServerPort))
+	if err := s.httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return err
+	}
+	return nil
+}
+
+func (s *Server) Shutdown(ctx context.Context) error {
+	return s.httpServer.Shutdown(ctx)
+}
+
+func recoverWithLog(c *gin.Context, recovered any) {
+	slog.ErrorContext(c.Request.Context(), "http.panic",
+		slog.String("event", "http.panic"),
+		slog.Any("panic", recovered),
+	)
+	c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 }
 
 func (s *Server) registerRoutes() {
@@ -111,7 +144,8 @@ func (s *Server) registerRoutes() {
 		serviceorder.NewGetExecutionMetricsUseCase(orderRepo),
 	)
 
-	s.router.GET("/health", func(ctx *gin.Context) { ctx.Status(200) })
+	s.router.GET("/health", s.health)
+	s.router.GET("/ready", s.ready)
 	s.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
 	v1 := s.router.Group("/api/v1")
@@ -126,4 +160,21 @@ func (s *Server) registerRoutes() {
 	partHandler.RegisterRoutes(protected)
 	serviceHandler.RegisterRoutes(protected)
 	orderHandler.RegisterRoutes(protected)
+}
+
+func (s *Server) health(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
+func (s *Server) ready(c *gin.Context) {
+	sqlDB, err := s.db.DB()
+	if err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "database unavailable"})
+		return
+	}
+	if err := sqlDB.PingContext(c.Request.Context()); err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "database unavailable"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "ready"})
 }

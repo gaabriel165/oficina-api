@@ -2,6 +2,7 @@ package entity_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/gabrielcamargo/oficina-api/internal/domain/entity"
 	"github.com/gabrielcamargo/oficina-api/internal/domain/valueobject"
@@ -105,4 +106,17 @@ func TestServiceOrder_CalculateTotalAmount_ShouldSumItemsAndParts(t *testing.T) 
 
 	expected := 150.00 + (29.90 * 2)
 	assert.Equal(t, expected, order.TotalAmount())
+}
+
+func TestServiceOrderStartDiagnosis_ShouldRecordLastTransition(t *testing.T) {
+	order, _ := entity.NewServiceOrder("customer-1", "vehicle-1", "")
+	assert.Nil(t, order.LastTransition())
+
+	err := order.StartDiagnosis()
+
+	assert.NoError(t, err)
+	transition := order.LastTransition()
+	assert.Equal(t, valueobject.OrderStatusReceived, transition.From)
+	assert.Equal(t, valueobject.OrderStatusInDiagnosis, transition.To)
+	assert.GreaterOrEqual(t, transition.Duration, time.Duration(0))
 }

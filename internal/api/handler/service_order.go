@@ -156,12 +156,7 @@ func (h *ServiceOrderHandler) Create(c *gin.Context) {
 		Services:   req.Services,
 		Parts:      parts,
 	})
-	if err != nil {
-		response.Error(c, err)
-		return
-	}
-
-	c.JSON(http.StatusCreated, dto.ToServiceOrderResponse(result))
+	respondCreatedOrder(c, result, err)
 }
 
 // Get godoc
@@ -215,11 +210,7 @@ func (h *ServiceOrderHandler) List(c *gin.Context) {
 // @Router       /service-orders/{id}/start-diagnosis [patch]
 func (h *ServiceOrderHandler) StartDiagnosis(c *gin.Context) {
 	result, err := h.startDiagUC.Execute(c.Param("id"))
-	if err != nil {
-		response.Error(c, err)
-		return
-	}
-	c.JSON(http.StatusOK, dto.ToServiceOrderResponse(result))
+	respondOrderTransition(c, "start_diagnosis", result, err)
 }
 
 // AddService godoc
@@ -286,7 +277,6 @@ func (h *ServiceOrderHandler) AddPart(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.ToServiceOrderResponse(result))
 }
 
-
 // SendBudget godoc
 // @Summary      Send budget to customer for approval
 // @Tags         service-orders
@@ -299,11 +289,7 @@ func (h *ServiceOrderHandler) AddPart(c *gin.Context) {
 // @Router       /service-orders/{id}/send-budget [patch]
 func (h *ServiceOrderHandler) SendBudget(c *gin.Context) {
 	result, err := h.sendBudgetUC.Execute(c.Param("id"))
-	if err != nil {
-		response.Error(c, err)
-		return
-	}
-	c.JSON(http.StatusOK, dto.ToServiceOrderResponse(result))
+	respondOrderTransition(c, "send_budget", result, err)
 }
 
 // ApproveBudget godoc
@@ -318,11 +304,7 @@ func (h *ServiceOrderHandler) SendBudget(c *gin.Context) {
 // @Router       /service-orders/{id}/approve-budget [patch]
 func (h *ServiceOrderHandler) ApproveBudget(c *gin.Context) {
 	result, err := h.approveUC.Execute(c.Param("id"))
-	if err != nil {
-		response.Error(c, err)
-		return
-	}
-	c.JSON(http.StatusOK, dto.ToServiceOrderResponse(result))
+	respondOrderTransition(c, "approve_budget", result, err)
 }
 
 // RejectBudget godoc
@@ -337,11 +319,7 @@ func (h *ServiceOrderHandler) ApproveBudget(c *gin.Context) {
 // @Router       /service-orders/{id}/reject-budget [patch]
 func (h *ServiceOrderHandler) RejectBudget(c *gin.Context) {
 	result, err := h.rejectUC.Execute(c.Param("id"))
-	if err != nil {
-		response.Error(c, err)
-		return
-	}
-	c.JSON(http.StatusOK, dto.ToServiceOrderResponse(result))
+	respondOrderTransition(c, "reject_budget", result, err)
 }
 
 // BudgetApprovalWebhook godoc
@@ -367,20 +345,12 @@ func (h *ServiceOrderHandler) BudgetApprovalWebhook(c *gin.Context) {
 
 	if req.Decision == dto.BudgetDecisionRejected {
 		result, err := h.rejectUC.Execute(c.Param("id"))
-		if err != nil {
-			response.Error(c, err)
-			return
-		}
-		c.JSON(http.StatusOK, dto.ToServiceOrderResponse(result))
+		respondOrderTransition(c, "webhook_reject_budget", result, err)
 		return
 	}
 
 	result, err := h.approveUC.Execute(c.Param("id"))
-	if err != nil {
-		response.Error(c, err)
-		return
-	}
-	c.JSON(http.StatusOK, dto.ToServiceOrderResponse(result))
+	respondOrderTransition(c, "approve_budget", result, err)
 }
 
 // FinishExecution godoc
@@ -395,11 +365,7 @@ func (h *ServiceOrderHandler) BudgetApprovalWebhook(c *gin.Context) {
 // @Router       /service-orders/{id}/finish-execution [patch]
 func (h *ServiceOrderHandler) FinishExecution(c *gin.Context) {
 	result, err := h.finishExecUC.Execute(c.Param("id"))
-	if err != nil {
-		response.Error(c, err)
-		return
-	}
-	c.JSON(http.StatusOK, dto.ToServiceOrderResponse(result))
+	respondOrderTransition(c, "finish_execution", result, err)
 }
 
 // DeliverVehicle godoc
@@ -414,9 +380,5 @@ func (h *ServiceOrderHandler) FinishExecution(c *gin.Context) {
 // @Router       /service-orders/{id}/deliver [patch]
 func (h *ServiceOrderHandler) DeliverVehicle(c *gin.Context) {
 	result, err := h.deliverUC.Execute(c.Param("id"))
-	if err != nil {
-		response.Error(c, err)
-		return
-	}
-	c.JSON(http.StatusOK, dto.ToServiceOrderResponse(result))
+	respondOrderTransition(c, "deliver", result, err)
 }
