@@ -798,6 +798,8 @@ paths:
       - parts
   /service-orders:
     get:
+      description: Operators see every active order sorted by urgency; customers authenticated
+        by CPF see only their own.
       produces:
       - application/json
       responses:
@@ -809,7 +811,7 @@ paths:
             type: array
       security:
       - BearerAuth: []
-      summary: List all service orders
+      summary: List active service orders
       tags:
       - service-orders
     post:
@@ -844,6 +846,8 @@ paths:
       - service-orders
   /service-orders/{id}:
     get:
+      description: Operators can read any order; customers authenticated by CPF can
+        only read their own.
       parameters:
       - description: Service Order ID
         in: path
@@ -857,6 +861,10 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/dto.ServiceOrderResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
         "404":
           description: Not Found
           schema:
@@ -868,6 +876,7 @@ paths:
       - service-orders
   /service-orders/{id}/approve-budget:
     patch:
+      description: Customers authenticated by CPF can only approve their own order.
       parameters:
       - description: Service Order ID
         in: path
@@ -1039,6 +1048,7 @@ paths:
       - service-orders
   /service-orders/{id}/reject-budget:
     patch:
+      description: Customers authenticated by CPF can only reject their own order.
       parameters:
       - description: Service Order ID
         in: path
