@@ -21,6 +21,7 @@ type Customer struct {
 	document     string
 	phone        string
 	email        string
+	status       valueobject.CustomerStatus
 	createdAt    time.Time
 	updatedAt    time.Time
 }
@@ -49,12 +50,13 @@ func NewCustomer(name, document, phone, email string) (*Customer, error) {
 		document:     docValue,
 		phone:        phone,
 		email:        email,
+		status:       valueobject.CustomerStatusActive,
 		createdAt:    now,
 		updatedAt:    now,
 	}, nil
 }
 
-func RestoreCustomer(id, name, documentType, document, phone, email string, createdAt, updatedAt time.Time) *Customer {
+func RestoreCustomer(id, name, documentType, document, phone, email, status string, createdAt, updatedAt time.Time) *Customer {
 	return &Customer{
 		id:           id,
 		name:         name,
@@ -62,19 +64,22 @@ func RestoreCustomer(id, name, documentType, document, phone, email string, crea
 		document:     document,
 		phone:        phone,
 		email:        email,
+		status:       valueobject.CustomerStatus(status),
 		createdAt:    createdAt,
 		updatedAt:    updatedAt,
 	}
 }
 
-func (c *Customer) ID() string           { return c.id }
-func (c *Customer) Name() string         { return c.name }
-func (c *Customer) Document() string     { return c.document }
-func (c *Customer) DocumentType() DocumentType { return c.documentType }
-func (c *Customer) Phone() string        { return c.phone }
-func (c *Customer) Email() string        { return c.email }
-func (c *Customer) CreatedAt() time.Time { return c.createdAt }
-func (c *Customer) UpdatedAt() time.Time { return c.updatedAt }
+func (c *Customer) ID() string                         { return c.id }
+func (c *Customer) Name() string                       { return c.name }
+func (c *Customer) Document() string                   { return c.document }
+func (c *Customer) DocumentType() DocumentType         { return c.documentType }
+func (c *Customer) Phone() string                      { return c.phone }
+func (c *Customer) Email() string                      { return c.email }
+func (c *Customer) Status() valueobject.CustomerStatus { return c.status }
+func (c *Customer) IsActive() bool                     { return c.status.IsActive() }
+func (c *Customer) CreatedAt() time.Time               { return c.createdAt }
+func (c *Customer) UpdatedAt() time.Time               { return c.updatedAt }
 
 func (c *Customer) Update(name, phone, email string) error {
 	if name == "" {
@@ -105,4 +110,14 @@ func parseDocument(document string) (DocumentType, string, error) {
 	}
 
 	return "", "", ErrInvalidDocument
+}
+
+func (c *Customer) Activate() {
+	c.status = valueobject.CustomerStatusActive
+	c.updatedAt = time.Now()
+}
+
+func (c *Customer) Deactivate() {
+	c.status = valueobject.CustomerStatusInactive
+	c.updatedAt = time.Now()
 }

@@ -12,6 +12,7 @@ import (
 type CustomerHandler struct {
 	createUC *customer.CreateCustomerUseCase
 	updateUC *customer.UpdateCustomerUseCase
+	statusUC *customer.ChangeCustomerStatusUseCase
 	deleteUC *customer.DeleteCustomerUseCase
 	getUC    *customer.GetCustomerUseCase
 	listUC   *customer.ListCustomersUseCase
@@ -20,6 +21,7 @@ type CustomerHandler struct {
 func NewCustomerHandler(
 	createUC *customer.CreateCustomerUseCase,
 	updateUC *customer.UpdateCustomerUseCase,
+	statusUC *customer.ChangeCustomerStatusUseCase,
 	deleteUC *customer.DeleteCustomerUseCase,
 	getUC *customer.GetCustomerUseCase,
 	listUC *customer.ListCustomersUseCase,
@@ -27,6 +29,7 @@ func NewCustomerHandler(
 	return &CustomerHandler{
 		createUC: createUC,
 		updateUC: updateUC,
+		statusUC: statusUC,
 		deleteUC: deleteUC,
 		getUC:    getUC,
 		listUC:   listUC,
@@ -38,6 +41,7 @@ func (h *CustomerHandler) RegisterRoutes(router *gin.RouterGroup) {
 	router.GET("/customers", h.List)
 	router.GET("/customers/:id", h.Get)
 	router.PUT("/customers/:id", h.Update)
+	router.PATCH("/customers/:id/status", h.ChangeStatus)
 	router.DELETE("/customers/:id", h.Delete)
 }
 
@@ -98,6 +102,39 @@ func (h *CustomerHandler) Update(c *gin.Context) {
 		Name:  req.Name,
 		Phone: req.Phone,
 		Email: req.Email,
+	})
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.ToCustomerResponse(result))
+}
+
+// ChangeStatus godoc
+// @Summary      Activate or deactivate a customer
+// @Description  Inactive customers cannot authenticate by CPF through the API Gateway.
+// @Tags         customers
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        id    path      string                           true  "Customer ID"
+// @Param        body  body      dto.ChangeCustomerStatusRequest  true  "New status: active or inactive"
+// @Success      200   {object}  dto.CustomerResponse
+// @Failure      400   {object}  response.ErrorResponse
+// @Failure      404   {object}  response.ErrorResponse
+// @Failure      422   {object}  response.ErrorResponse
+// @Router       /customers/{id}/status [patch]
+func (h *CustomerHandler) ChangeStatus(c *gin.Context) {
+	var req dto.ChangeCustomerStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	result, err := h.statusUC.Execute(customer.ChangeCustomerStatusInput{
+		ID:     c.Param("id"),
+		Status: req.Status,
 	})
 	if err != nil {
 		response.Error(c, err)

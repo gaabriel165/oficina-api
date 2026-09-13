@@ -11,11 +11,12 @@ import (
 
 func TestRestoreCustomer_ShouldRestoreAllFields(t *testing.T) {
 	now := time.Now()
-	c := entity.RestoreCustomer("id-1", "John Doe", string(entity.DocumentTypeCPF), "52998224725", "11999999999", "john@email.com", now, now)
+	c := entity.RestoreCustomer("id-1", "John Doe", string(entity.DocumentTypeCPF), "52998224725", "11999999999", "john@email.com", "inactive", now, now)
 
 	assert.Equal(t, "id-1", c.ID())
 	assert.Equal(t, "John Doe", c.Name())
 	assert.Equal(t, "52998224725", c.Document())
+	assert.Equal(t, valueobject.CustomerStatusInactive, c.Status())
 	assert.Equal(t, now, c.CreatedAt())
 	assert.Equal(t, now, c.UpdatedAt())
 }

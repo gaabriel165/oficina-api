@@ -19,6 +19,10 @@ type UpdateCustomerRequest struct {
 	Email string `json:"email" binding:"required,email"`
 }
 
+type ChangeCustomerStatusRequest struct {
+	Status string `json:"status" binding:"required" example:"inactive"`
+}
+
 type CustomerResponse struct {
 	ID           string    `json:"id"`
 	Name         string    `json:"name"`
@@ -26,6 +30,7 @@ type CustomerResponse struct {
 	DocumentType string    `json:"document_type"`
 	Phone        string    `json:"phone"`
 	Email        string    `json:"email"`
+	Status       string    `json:"status"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }
@@ -38,6 +43,7 @@ func ToCustomerResponse(c *entity.Customer) CustomerResponse {
 		DocumentType: string(c.DocumentType()),
 		Phone:        c.Phone(),
 		Email:        c.Email(),
+		Status:       c.Status().String(),
 		CreatedAt:    c.CreatedAt(),
 		UpdatedAt:    c.UpdatedAt(),
 	}

@@ -65,6 +65,7 @@ func (s *Server) registerRoutes() {
 	customerHandler := handler.NewCustomerHandler(
 		customer.NewCreateCustomerUseCase(customerRepo, cnpjSvc),
 		customer.NewUpdateCustomerUseCase(customerRepo),
+		customer.NewChangeCustomerStatusUseCase(customerRepo),
 		customer.NewDeleteCustomerUseCase(customerRepo),
 		customer.NewGetCustomerUseCase(customerRepo),
 		customer.NewListCustomersUseCase(customerRepo),

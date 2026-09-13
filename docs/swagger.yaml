@@ -27,6 +27,14 @@ definitions:
     required:
     - decision
     type: object
+  dto.ChangeCustomerStatusRequest:
+    properties:
+      status:
+        example: inactive
+        type: string
+    required:
+    - status
+    type: object
   dto.CreateCustomerRequest:
     properties:
       document:
@@ -148,6 +156,8 @@ definitions:
       name:
         type: string
       phone:
+        type: string
+      status:
         type: string
       updated_at:
         type: string
@@ -583,6 +593,47 @@ paths:
       security:
       - BearerAuth: []
       summary: Update a customer
+      tags:
+      - customers
+  /customers/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Inactive customers cannot authenticate by CPF through the API Gateway.
+      parameters:
+      - description: Customer ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 'New status: active or inactive'
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ChangeCustomerStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.CustomerResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Activate or deactivate a customer
       tags:
       - customers
   /parts:
