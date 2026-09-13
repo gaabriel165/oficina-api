@@ -81,7 +81,7 @@
           "title": "Traces — tempo em banco de dados (ms)",
           "layout": { "column": 7, "row": 7, "width": 6, "height": 3 },
           "visualization": { "id": "viz.line" },
-          "rawConfiguration": { "nrqlQueries": [ { "accountId": ACCOUNT_ID, "query": "SELECT average(duration.ms) AS 'ms' FROM Span WHERE service.name LIKE 'oficina-api%' AND db.system = 'postgresql' TIMESERIES 5 minutes SINCE 3 hours ago" } ] }
+          "rawConfiguration": { "nrqlQueries": [ { "accountId": ACCOUNT_ID, "query": "SELECT average(duration.ms) AS 'ms' FROM Span WHERE service.name LIKE 'oficina-api%' AND db.system.name = 'postgresql' TIMESERIES 5 minutes SINCE 3 hours ago" } ] }
         }
       ]
     },
