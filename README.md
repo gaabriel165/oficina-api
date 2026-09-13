@@ -1,57 +1,114 @@
 # Tech Challenge — Oficina Mecânica API
 
 [![CI](https://github.com/gaabriel165/oficina-api/actions/workflows/ci.yml/badge.svg)](https://github.com/gaabriel165/oficina-api/actions/workflows/ci.yml)
+[![CD](https://github.com/gaabriel165/oficina-api/actions/workflows/cd.yml/badge.svg)](https://github.com/gaabriel165/oficina-api/actions/workflows/cd.yml)
 
 Back-end do **Sistema Integrado de Atendimento e Execução de Serviços** de uma oficina mecânica, desenvolvido para o Tech Challenge da pós-graduação em Arquitetura de Software (FIAP SOAT).
 
 - **Fase 1** — MVP com gestão de ordens de serviço, clientes, veículos, peças e serviços, aplicando DDD, JWT e testes.
-- **Fase 2** — evolução para **qualidade, resiliência e escalabilidade**: refatoração em Clean Architecture, containerização, orquestração em Kubernetes (EKS), infraestrutura como código (Terraform) e pipeline de CI/CD.
+- **Fase 2** — Clean Architecture, containerização, Kubernetes (EKS), Terraform e CI/CD.
+- **Fase 3** — operação corporativa: **API Gateway** como porta única, **autenticação de clientes por CPF via Lambda**, quatro repositórios com **CI/CD e deploy automático** (homologação e produção), **observabilidade com New Relic** (traces, logs JSON correlacionados, dashboards e alertas) e **documentação arquitetural** completa (componentes, sequências, RFCs, ADRs, ER).
 
-## Objetivos da Fase 2
+## Os quatro repositórios
 
-- **Clean Architecture / Hexagonal** — separação estrita de camadas e inversão de dependências.
-- **Novas APIs** — abertura de OS em chamada única, consulta de status, listagem priorizada, webhook de aprovação de orçamento e notificação de status por e-mail.
-- **Escalabilidade** — Horizontal Pod Autoscaler escalando por CPU sob carga.
-- **Automação** — provisionamento (Terraform) e deploy (CI/CD) reproduzíveis.
+| Repositório | Responsabilidade | Entrega |
+|---|---|---|
+| **[oficina-api](https://github.com/gaabriel165/oficina-api)** (este) | Aplicação principal em Go, Clean Architecture | Imagem no ECR e deploy no EKS via kustomize — branch `homolog` → namespace `oficina-api-homolog`, `main` → `oficina-api` |
+| [oficina-infra-k8s](https://github.com/gaabriel165/oficina-infra-k8s) | Infraestrutura Kubernetes (Terraform) | VPC, EKS 1.34, ECR, OIDC + roles do GitHub Actions, segredos no SSM, metrics-server e New Relic via Helm |
+| [oficina-infra-db](https://github.com/gaabriel165/oficina-infra-db) | Banco gerenciado (Terraform) | RDS PostgreSQL 16 privado, security groups, `DATABASE_URL` no SSM |
+| [oficina-lambda-auth](https://github.com/gaabriel165/oficina-lambda-auth) | Function serverless + API Gateway (Go + Terraform) | Lambda `auth-cpf` (valida CPF, consulta cliente, emite JWT), Lambda `authorizer`, API Gateway HTTP API |
+
+Ordem de provisionamento: `oficina-infra-k8s` → `oficina-infra-db` → `oficina-api` (CD) → `oficina-lambda-auth`. Destruição na ordem inversa.
 
 ## Links
 
+- **Documentação de arquitetura (Fase 3):** [`docs/architecture/`](./docs/architecture/README.md) — [componentes](./docs/architecture/components.md) · [sequência: autenticação](./docs/architecture/sequence-authentication.md) · [sequência: ordem de serviço](./docs/architecture/sequence-service-order.md) · [banco de dados e ER](./docs/architecture/database.md) · [RFCs](./docs/architecture/rfc/) · [ADRs](./docs/architecture/adr/)
+- **Swagger (com o ambiente no ar):** `https://<api-id>.execute-api.us-east-1.amazonaws.com/swagger/index.html` (via API Gateway) ou `http://<nlb-host>/swagger/index.html`
 - **Collection das APIs (Insomnia):** [`insomnia-collection.json`](./insomnia-collection.json)
-- **Swagger (com a aplicação no ar):** `http://<load-balancer-host>/swagger/index.html`
-- **Documentação DDD (Event Storming):** [miro.com/app/board/uXjVHZWTzN0=/](https://miro.com/app/board/uXjVHZWTzN0=/)
-- **Vídeo demonstrativo:** https://youtu.be/KcicodFkWag
+- **Documentação DDD (Event Storming, Fase 1):** [miro.com/app/board/uXjVHZWTzN0=/](https://miro.com/app/board/uXjVHZWTzN0=/)
+- **Vídeo Fase 2:** https://youtu.be/KcicodFkWag · **Vídeo Fase 3:** _a incluir_
+
+> O ambiente AWS é **provisionado sob demanda** (custo por hora) e destruído após cada sessão de testes. Os links de deploy podem estar fora do ar no momento da avaliação; o vídeo demonstra o pipeline e o ambiente em execução.
 
 ---
 
 ## Arquitetura
 
-### 1. Componentes da aplicação (Clean Architecture)
+### 1. Visão de nuvem (Fase 3)
 
-As dependências apontam sempre **para dentro**: a API depende dos casos de uso, que dependem do domínio. A infraestrutura implementa as **portas** (interfaces) definidas no domínio — nada do domínio conhece framework, banco ou HTTP.
+```mermaid
+flowchart LR
+    Customer["Cliente - CPF"]
+    Operator["Operador"]
+
+    subgraph AWS["AWS us-east-1"]
+        APIGW["API Gateway HTTP API"]
+        LambdaAuth["Lambda auth-cpf"]
+        LambdaAuthz["Lambda authorizer"]
+        SSM[("SSM Parameter Store")]
+        ECR[("ECR")]
+        subgraph VPC["VPC"]
+            NLB["Network Load Balancer"]
+            subgraph EKS["EKS"]
+                Prod["ns oficina-api - 2..6 pods + HPA"]
+                Homolog["ns oficina-api-homolog - 1 pod"]
+                NRAgent["New Relic nri-bundle"]
+            end
+            RDS[("RDS PostgreSQL 16")]
+        end
+    end
+
+    NR["New Relic - APM, Logs, Infra, Dashboards, Alerts"]
+    Resend["Resend"]
+
+    Customer -->|"POST /auth/cpf"| APIGW
+    Operator -->|"POST /api/v1/auth/login"| APIGW
+    Customer -->|"Bearer JWT"| APIGW
+    APIGW --> LambdaAuth
+    APIGW -.->|"valida JWT"| LambdaAuthz
+    APIGW -->|"proxy HTTP"| NLB
+    NLB --> Prod
+    LambdaAuth --> RDS
+    Prod --> RDS
+    Homolog --> RDS
+    Prod --> Resend
+    Prod -.->|"OTLP traces"| NR
+    NRAgent -.->|"métricas K8s + logs"| NR
+    LambdaAuth -.-> SSM
+    EKS -.-> ECR
+```
+
+Detalhes e o diagrama completo (com GitHub Actions, CloudWatch, S3 state) em [`docs/architecture/components.md`](./docs/architecture/components.md).
+
+### 2. Componentes da aplicação (Clean Architecture)
+
+As dependências apontam sempre **para dentro**: a API depende dos casos de uso, que dependem do domínio. A infraestrutura implementa as **portas** (interfaces) definidas no domínio — nada do domínio conhece framework, banco, HTTP ou telemetria.
 
 ```mermaid
 flowchart TD
-    subgraph API["API — Frameworks & Drivers (Gin)"]
+    subgraph API["API - Frameworks e Drivers (Gin)"]
         H[Handlers]
-        MW[Middlewares JWT / Webhook]
-        DTO[DTOs + mapeamento de erros]
+        MW["Middlewares: JWT, Webhook, RequestID, RequestLogger, OTel"]
+        DTO["DTOs + mapeamento de erros"]
     end
-    subgraph APP["Application — Casos de Uso"]
-        UC[Use Cases: serviceorder, customer, vehicle, part, service, auth]
+    subgraph APP["Application - Casos de Uso"]
+        UC["Use Cases: serviceorder, customer, vehicle, part, service, auth"]
     end
-    subgraph DOM["Domain — Entidades e Regras"]
+    subgraph DOM["Domain - Entidades e Regras"]
         ENT[Entities]
-        VO[Value Objects: CPF, CNPJ, Plate, OrderStatus]
-        PORT[Ports: Repository / NotificationService / CNPJValidationService]
+        VO["Value Objects: CPF, CNPJ, Plate, OrderStatus, CustomerStatus"]
+        PORT["Ports: Repository / NotificationService / CNPJValidationService"]
     end
-    subgraph INFRA["Infrastructure — Adapters"]
-        GORM[Repositórios GORM + PostgreSQL]
-        RESEND[Resend Notifier]
-        BRASIL[BrasilAPI Client]
+    subgraph INFRA["Infrastructure - Adapters"]
+        GORM["Repositórios GORM + PostgreSQL"]
+        RESEND["Resend Notifier"]
+        BRASIL["BrasilAPI Client"]
+        OBS["Observability: slog JSON + OpenTelemetry"]
     end
 
     H --> UC
     MW --> UC
+    H -.->|eventos de negócio| OBS
     UC --> PORT
     UC --> ENT
     ENT --> VO
@@ -60,86 +117,66 @@ flowchart TD
     BRASIL -. implementa .-> PORT
 ```
 
-### 2. Infraestrutura provisionada (AWS)
-
-```mermaid
-flowchart LR
-    User[Cliente / Internet]
-    Resend[Resend API - e-mail]
-
-    subgraph AWS["AWS us-east-1"]
-        ECR[(ECR - imagem Docker)]
-        subgraph VPC["VPC"]
-            subgraph Pub["Subnets publicas"]
-                NLB[Network Load Balancer]
-            end
-            subgraph Priv["Subnets privadas"]
-                subgraph EKS["EKS - node group 2x t3.small"]
-                    POD1[Pod oficina-api]
-                    POD2[Pod oficina-api]
-                    HPA[HPA 2..6 por CPU]
-                end
-                RDS[(RDS PostgreSQL)]
-            end
-        end
-    end
-
-    User --> NLB
-    NLB --> POD1
-    NLB --> POD2
-    POD1 --> RDS
-    POD2 --> RDS
-    POD1 --> Resend
-    HPA -. escala .-> POD2
-    EKS -. pull da imagem .-> ECR
-```
+| Camada | Pasta | Responsabilidade | Depende de |
+|---|---|---|---|
+| **Domain** | `internal/domain` | Entidades, value objects, regras de negócio e **portas** | nada externo |
+| **Application** | `internal/application` | Casos de uso (um por operação); orquestra o domínio | apenas do domínio |
+| **Infrastructure** | `internal/infrastructure` | Adapters: GORM/PostgreSQL, Resend, BrasilAPI, observabilidade | implementa portas do domínio |
+| **API** | `internal/api` | Handlers Gin, middlewares, DTOs, mapeamento de erros | dos casos de uso |
 
 ### 3. Fluxo de deploy (CI/CD)
 
 ```mermaid
 flowchart LR
-    Dev[Desenvolvedor] -->|git push| GH[GitHub]
-    GH -->|push / PR| CI["CI (ci.yml)<br/>build + vet + testes"]
-    GH -->|push na main| CD["CD (cd.yml)"]
-    CD -->|OIDC assume role| STS[AWS STS]
-    CD -->|build + push| ECR[(ECR)]
-    CD -->|update-kubeconfig<br/>kubectl apply -k| EKS[EKS]
-    EKS -->|pull| ECR
+    Dev[Desenvolvedor] -->|Pull Request| CI["CI: build, vet, testes unitários e integração, kustomize, docker build"]
+    CI -->|merge| Branch{branch}
+    Branch -->|homolog| CDh["CD homolog"]
+    Branch -->|main| CDp["CD produção"]
+    CDh & CDp -->|OIDC assume role| STS[AWS STS]
+    CDh & CDp -->|build + push| ECR[(ECR)]
+    CDh & CDp -.->|lê database_url, jwt_secret, webhook_secret| SSM[(SSM)]
+    CDh -->|kubectl apply -k overlays/homolog| NSH["ns oficina-api-homolog"]
+    CDp -->|kubectl apply -k overlays/prod| NSP["ns oficina-api"]
 ```
+
+A branch `main` é **protegida**: sem commits diretos, merge apenas por Pull Request com o CI verde.
 
 ---
 
-## Clean Architecture — a regra de dependência
+## Autenticação
 
-| Camada | Pasta | Responsabilidade | Depende de |
-|---|---|---|---|
-| **Domain** | `internal/domain` | Entidades, value objects, regras de negócio e **portas** (interfaces) | nada externo |
-| **Application** | `internal/application` | Casos de uso (um por operação); orquestra o domínio | apenas do domínio |
-| **Infrastructure** | `internal/infrastructure` | Adapters: GORM/PostgreSQL, Resend, BrasilAPI | implementa portas do domínio |
-| **API** | `internal/api` | Handlers Gin, middlewares, DTOs, mapeamento de erros | dos casos de uso |
+Dois emissores produzem o **mesmo JWT HS256**, assinado com o segredo único guardado no SSM (`/oficina-api/jwt_secret`):
 
-Princípios aplicados:
-- **Inversão de dependência** — casos de uso dependem de interfaces (`ServiceOrderRepository`, `NotificationService`), não de implementações. Trocar PostgreSQL, o provedor de e-mail ou o webhook não toca o domínio nem os casos de uso.
-- **Domínio sem frameworks** — nenhum import de Gin, GORM, JWT ou HTTP no pacote `domain`.
-- **Composition root único** — a montagem concreta (repos, adapters, use cases) acontece só no `internal/api/server.go`.
-- **Entidades ricas** — invariantes e transições de estado da OS vivem na entidade, não em serviços anêmicos.
+| Quem | Como | Onde |
+|---|---|---|
+| Operador da oficina | `POST /api/v1/auth/login` com e-mail e senha (bcrypt) | Esta API |
+| Cliente | `POST /auth/cpf` com o CPF — a Lambda valida o CPF, confirma que o cliente existe e está **ativo** e devolve o token | [oficina-lambda-auth](https://github.com/gaabriel165/oficina-lambda-auth) via API Gateway |
 
-### Estrutura de pastas
+As rotas sob `/api/v1/*` são protegidas em **duas camadas**: o **Lambda authorizer** do API Gateway rejeita tokens inválidos na borda (401) e o middleware `Auth` da aplicação valida de novo (defesa em profundidade). Rotas públicas: `/health`, `/ready`, `/swagger/*`, `POST /api/v1/auth/login|register`, `GET /api/v1/service-orders/{id}/status` e o webhook `POST /api/v1/service-orders/{id}/budget-approval` (protegido por `X-Webhook-Secret`).
 
-```
-cmd/api/                  → entrypoint
-configs/                  → carregamento de variáveis de ambiente
-internal/
-  domain/                 → entities, value objects, ports (interfaces), erros de domínio
-  application/usecase/     → casos de uso (um por operação) + mocks
-  infrastructure/          → GORM (PostgreSQL), Resend (e-mail), BrasilAPI, migrations
-  api/                     → handlers, middlewares, DTOs, mapeamento de erros, server.go
-migrations/               → migrations SQL versionadas (golang-migrate)
-docs/                     → Swagger gerado
-k8s/                      → manifestos Kubernetes (kustomize)
-infra/                    → Terraform (VPC, EKS, RDS, ECR, OIDC)
-.github/workflows/         → pipelines de CI e CD
-```
+Clientes podem ser desativados com `PATCH /api/v1/customers/{id}/status` (`{"status":"inactive"}`); a Lambda passa a responder **403** para o CPF. Detalhes em [RFC-003](./docs/architecture/rfc/RFC-003-estrategia-de-autenticacao.md) e [ADR-003](./docs/architecture/adr/ADR-003-jwt-hs256-segredo-compartilhado.md).
+
+## Observabilidade (New Relic)
+
+| Requisito | Implementação |
+|---|---|
+| Latência das APIs | Spans HTTP (`otelgin`) e de banco (plugin GORM) exportados via **OTLP** para o New Relic; campo `latency_ms` em cada log `http.request` |
+| CPU e memória do Kubernetes | `nri-bundle` (infra agent + kube-state-metrics) instalado pelo CD do `oficina-infra-k8s` |
+| Healthchecks e uptime | `/health` (processo) e `/ready` (ping no banco) usados pelas probes; monitor Synthetics no `/health` via API Gateway |
+| Alertas de falha no processamento de OS | Evento `service_order.failed` → condição NRQL `count(*) > 0` em 5 min → e-mail |
+| Logs estruturados com correlação | `log/slog` em JSON com `request_id` (header `X-Request-ID`, gerado quando ausente), `trace_id` e `span_id` do OpenTelemetry em toda linha; Fluent Bit envia o stdout dos pods |
+
+Eventos de negócio (campo `event`) que alimentam os dashboards:
+
+| Evento | Quando | Campos relevantes |
+|---|---|---|
+| `service_order.created` | OS aberta | `order_id`, `customer_id`, `services`, `parts` |
+| `service_order.status_changed` | Qualquer transição | `from_status`, `to_status`, `duration_minutes` (tempo no status anterior), `total_amount` |
+| `service_order.failed` | Erro em rota de OS | `action`, `order_id`, `error` |
+| `integration.error` | Falha no Resend ou na BrasilAPI | `integration`, `operation`, `error` |
+| `http.request` | Toda requisição | `method`, `route`, `status`, `latency_ms` |
+
+Dashboards expostos: **volume diário de OS**, **tempo médio por status** (diagnóstico, execução, finalização), **erros e falhas nas integrações**, latência p50/p95 e CPU/memória por pod. NRQL de referência em [`sequence-service-order.md`](./docs/architecture/sequence-service-order.md) e [RFC-004](./docs/architecture/rfc/RFC-004-ferramenta-de-observabilidade.md).
 
 ---
 
@@ -148,21 +185,18 @@ infra/                    → Terraform (VPC, EKS, RDS, ECR, OIDC)
 | Categoria | Tecnologias |
 |---|---|
 | **Aplicação** | Go 1.25, Gin, GORM, golang-migrate, golang-jwt |
+| **Observabilidade** | `log/slog` (JSON), OpenTelemetry (`otelgin`, plugin GORM, exportador OTLP/HTTP), New Relic |
 | **Banco** | PostgreSQL 16 (local via Docker, produção via RDS) |
-| **E-mail** | Resend (adapter atrás de porta `NotificationService`) |
+| **E-mail** | Resend (adapter atrás da porta `NotificationService`) |
 | **Testes** | Testify, Mockery, testcontainers-go |
-| **Container** | Docker (multi-stage, imagem estática non-root) |
-| **Orquestração** | Kubernetes (AWS EKS) + kustomize + HPA |
-| **IaC** | Terraform (VPC, EKS, RDS, ECR, IAM/OIDC) |
-| **CI/CD** | GitHub Actions (OIDC, sem chave estática) |
+| **Container** | Docker (multi-stage, binário estático, non-root) |
+| **Orquestração** | Kubernetes (AWS EKS) + kustomize (base + overlays) + HPA |
+| **Borda** | AWS API Gateway HTTP API + Lambda authorizer |
+| **IaC / CI/CD** | Terraform (repos de infra) · GitHub Actions com OIDC |
 
 ### Por que PostgreSQL?
 
-- **Modelo relacional** adequado às entidades e à consistência transacional (aprovação de orçamento + débito de estoque atômicos).
-- **Integridade referencial** via chaves estrangeiras.
-- **Tipos avançados**: `UUID`, `TIMESTAMPTZ`, `NUMERIC` para valores monetários.
-- **Migrations versionadas** maduras no ecossistema Go (`golang-migrate`).
-- **RDS gerenciado** em produção: backups, criptografia e escalabilidade sem gestão manual.
+Modelo relacional com integridade referencial, transações (aprovação de orçamento + débito de estoque atômicos), tipos `UUID`/`NUMERIC`/`TIMESTAMP`, migrations maduras no ecossistema Go e RDS gerenciado. Justificativa formal, diagrama ER e os ajustes da Fase 3 (status do cliente, índices, normalização) em [`docs/architecture/database.md`](./docs/architecture/database.md).
 
 ---
 
@@ -171,20 +205,18 @@ infra/                    → Terraform (VPC, EKS, RDS, ECR, OIDC)
 | Entidade | Descrição |
 |---|---|
 | **User** | Operador do sistema — autenticado via e-mail/senha, recebe JWT |
-| **Customer** | Proprietário do veículo — identificado por CPF ou CNPJ |
+| **Customer** | Proprietário do veículo — identificado por CPF ou CNPJ; possui **status** `active`/`inactive` |
 | **Vehicle** | Pertence a um Customer — placa (formato antigo ou Mercosul) |
 | **Service** | Mão de obra oferecida (ex: Troca de Óleo) |
 | **Part** | Peça física com controle de estoque |
-| **ServiceOrder** | Agregado principal — controla o ciclo de vida do reparo |
-
-### Fluxo de status da Ordem de Serviço
+| **ServiceOrder** | Agregado principal — controla o ciclo de vida do reparo e registra a última transição de status |
 
 ```
 received → in_diagnosis → waiting_approval → in_execution → finished → delivered
                                           ↘ cancelled (orçamento rejeitado)
 ```
 
-Cada transição dispara uma **notificação por e-mail** ao cliente (best-effort — falha de e-mail não interrompe a operação).
+Cada transição dispara uma **notificação por e-mail** ao cliente (best-effort) e um evento `service_order.status_changed` nos logs.
 
 ---
 
@@ -194,51 +226,49 @@ Cada transição dispara uma **notificação por e-mail** ao cliente (best-effor
 
 ```bash
 cp .env.example .env      # ajuste as variáveis
-docker-compose up --build
+docker compose up --build
 ```
 
 - API: `http://localhost:8080` · Swagger: `http://localhost:8080/swagger/index.html`
 - Sobe a aplicação + PostgreSQL; migrations e seed rodam automaticamente no startup.
+- Usuário seed: `admin@oficina.com` / `admin123`. Cliente seed com CPF `98765432100`.
+- Para enviar traces localmente, preencha `OTEL_EXPORTER_OTLP_ENDPOINT` e `OTEL_EXPORTER_OTLP_HEADERS` (`api-key=<license>`).
 
-### B) Provisionar a infraestrutura (Terraform)
+### B) Infraestrutura
 
-Pré-requisitos: conta AWS, AWS CLI configurado, Terraform.
-
-```bash
-cd infra
-terraform init
-terraform plan            # revisa o que será criado
-terraform apply           # provisiona VPC, EKS, RDS, ECR, OIDC (~20 min)
-
-# conectar kubectl ao cluster:
-aws eks update-kubeconfig --name oficina-api-eks --region us-east-1
-```
-
-Recursos criados: VPC (subnets públicas/privadas + NAT), cluster **EKS**, **RDS PostgreSQL** privado, repositório **ECR** e o **role OIDC** para o GitHub Actions. Saídas úteis: `terraform output`. Para remover tudo: `terraform destroy`.
+Provisionada pelos repositórios dedicados (Terraform): [oficina-infra-k8s](https://github.com/gaabriel165/oficina-infra-k8s) (rede, EKS, ECR, OIDC, SSM) e [oficina-infra-db](https://github.com/gaabriel165/oficina-infra-db) (RDS). O API Gateway e as Lambdas ficam em [oficina-lambda-auth](https://github.com/gaabriel165/oficina-lambda-auth).
 
 ### C) Deploy em Kubernetes
 
-O **CD faz isso automaticamente** no push para `main`. Manualmente:
+O **CD faz isso automaticamente**: push em `homolog` → namespace `oficina-api-homolog`; merge em `main` → namespace `oficina-api`. O pipeline builda a imagem, publica no ECR, lê `database_url`, `jwt_secret` e `webhook_secret` do SSM, cria o Secret e aplica o overlay.
+
+Manualmente:
 
 ```bash
-# 1. metrics-server (pré-requisito do HPA)
-kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+aws eks update-kubeconfig --name oficina-api-eks --region us-east-1
 
-# 2. Secret da aplicação (a partir dos outputs do Terraform + suas chaves)
 kubectl create namespace oficina-api
 kubectl create secret generic oficina-api-secrets -n oficina-api \
-  --from-literal=DATABASE_URL="$(terraform -chdir=infra output -raw database_url)" \
-  --from-literal=JWT_SECRET="..." \
-  --from-literal=WEBHOOK_SECRET="..." \
-  --from-literal=RESEND_API_KEY="re_..."
+  --from-literal=DATABASE_URL="$(aws ssm get-parameter --name /oficina-api/database_url --with-decryption --query Parameter.Value --output text)" \
+  --from-literal=JWT_SECRET="$(aws ssm get-parameter --name /oficina-api/jwt_secret --with-decryption --query Parameter.Value --output text)" \
+  --from-literal=WEBHOOK_SECRET="$(aws ssm get-parameter --name /oficina-api/webhook_secret --with-decryption --query Parameter.Value --output text)" \
+  --from-literal=RESEND_API_KEY="re_..." \
+  --from-literal=OTEL_EXPORTER_OTLP_HEADERS="api-key=<new-relic-license>"
 
-# 3. apontar a imagem do ECR e aplicar
-cd k8s
-kustomize edit set image oficina-api=$(terraform -chdir=../infra output -raw ecr_repository_url):latest
-kubectl apply -k .
+(cd k8s/base && kustomize edit set image oficina-api=<ecr-url>:<tag>)
+kubectl apply -k k8s/overlays/prod
+kubectl get svc oficina-api -n oficina-api      # host do NLB
+```
 
-# 4. URL pública
-kubectl get service oficina-api -n oficina-api
+### D) Autenticar por CPF e consumir a API protegida (via API Gateway)
+
+```bash
+GW=https://<api-id>.execute-api.us-east-1.amazonaws.com
+
+TOKEN=$(curl -s -X POST "$GW/auth/cpf" -H 'Content-Type: application/json' \
+  -d '{"cpf":"98765432100"}' | jq -r .token)
+
+curl -s "$GW/api/v1/service-orders" -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
@@ -248,47 +278,69 @@ kubectl get service oficina-api -n oficina-api
 | Variável | Descrição |
 |---|---|
 | `SERVER_PORT` | Porta HTTP (padrão `8080`) |
+| `APP_ENV` | Ambiente (`local`, `homolog`, `production`) — vai para os logs e traces |
 | `DATABASE_URL` | String de conexão do PostgreSQL |
-| `JWT_SECRET` | Chave de assinatura do JWT |
+| `JWT_SECRET` | Chave HS256 compartilhada com a Lambda de autenticação |
 | `WEBHOOK_SECRET` | Segredo do webhook de aprovação de orçamento |
-| `RESEND_API_KEY` | Chave da API do Resend (e-mail) |
-| `EMAIL_FROM` | Remetente dos e-mails (ex.: `onboarding@resend.dev`) |
+| `RESEND_API_KEY` / `EMAIL_FROM` | Envio de e-mails |
+| `OTEL_SERVICE_NAME` | Nome do serviço na telemetria (padrão `oficina-api`) |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | Endpoint OTLP/HTTP (New Relic: `https://otlp.nr-data.net:4318`); vazio desliga o tracing |
+| `OTEL_EXPORTER_OTLP_HEADERS` | Cabeçalhos do exportador (`api-key=<license>`) |
 
 ---
 
 ## Endpoints da API
 
-> Base URL: `http://<host>:8080/api/v1`
+> Base URL: `https://<api-id>.execute-api.us-east-1.amazonaws.com/api/v1` (gateway) ou `http://<host>:8080/api/v1`
 
-### Autenticação (público)
+### Público
 | Método | Caminho | Descrição |
 |---|---|---|
-| POST | `/api/v1/auth/register` | Criar usuário |
-| POST | `/api/v1/auth/login` | Autenticar e receber JWT |
+| POST | `/auth/cpf` | **(API Gateway → Lambda)** Autenticar cliente por CPF e receber JWT |
+| POST | `/api/v1/auth/register` | Criar usuário operador |
+| POST | `/api/v1/auth/login` | Autenticar operador e receber JWT |
+| GET | `/api/v1/service-orders/{id}/status` | Consulta de status pelo cliente |
+| GET | `/health` · `/ready` | Liveness · readiness (ping no banco) |
 
-### Ordens de Serviço
-| Método | Caminho | Auth | Descrição |
-|---|---|---|---|
-| POST | `/api/v1/service-orders` | JWT | Abrir OS (aceita cliente, veículo, **serviços e peças** na mesma chamada) |
-| GET | `/api/v1/service-orders` | JWT | Listar OS **ativas**, ordenadas por urgência (mais antigas primeiro); exclui finalizadas/entregues |
-| GET | `/api/v1/service-orders/{id}` | JWT | Detalhar OS |
-| GET | `/api/v1/service-orders/{id}/status` | **Público** | Consulta de status pelo cliente |
-| GET | `/api/v1/service-orders/metrics` | JWT | Tempo médio de execução por serviço |
-| POST | `/api/v1/service-orders/{id}/budget-approval` | **Webhook** | Aprovação/recusa externa (`X-Webhook-Secret`) |
-| PATCH | `/api/v1/service-orders/{id}/start-diagnosis` | JWT | Iniciar diagnóstico |
-| POST | `/api/v1/service-orders/{id}/services` · `/parts` | JWT | Adicionar serviço / peça |
-| PATCH | `.../send-budget` · `/approve-budget` · `/reject-budget` · `/finish-execution` · `/deliver` | JWT | Transições de status |
+### Ordens de Serviço (JWT)
+| Método | Caminho | Descrição |
+|---|---|---|
+| POST | `/api/v1/service-orders` | Abrir OS (cliente, veículo, serviços e peças na mesma chamada) |
+| GET | `/api/v1/service-orders` | Listar OS ativas ordenadas por urgência |
+| GET | `/api/v1/service-orders/{id}` | Detalhar OS |
+| GET | `/api/v1/service-orders/metrics` | Tempo médio de execução por serviço |
+| POST | `/api/v1/service-orders/{id}/budget-approval` | **Webhook** de aprovação/recusa externa (`X-Webhook-Secret`) |
+| PATCH | `.../start-diagnosis` · `/send-budget` · `/approve-budget` · `/reject-budget` · `/finish-execution` · `/deliver` | Transições de status |
+| POST | `/api/v1/service-orders/{id}/services` · `/parts` | Adicionar serviço / peça |
 
 ### CRUDs administrativos (JWT)
-`/api/v1/customers`, `/api/v1/vehicles`, `/api/v1/parts` (+ `PATCH /{id}/stock`), `/api/v1/services` — todos com `GET` (lista), `POST`, `GET/{id}`, `PUT/{id}`, `DELETE/{id}`.
+`/api/v1/customers` (+ `PATCH /{id}/status`), `/api/v1/vehicles`, `/api/v1/parts` (+ `PATCH /{id}/stock`), `/api/v1/services` — todos com `GET` (lista), `POST`, `GET/{id}`, `PUT/{id}`, `DELETE/{id}`.
 
 ---
+
+## Estrutura de pastas
+
+```
+cmd/api/                  → entrypoint (logger, tracing, migrations, graceful shutdown)
+configs/                  → carregamento de variáveis de ambiente
+internal/
+  domain/                 → entities, value objects, ports, erros de domínio
+  application/usecase/    → casos de uso (um por operação) + mocks
+  infrastructure/         → GORM (PostgreSQL), Resend, BrasilAPI, observability (slog + OTel)
+  api/                    → handlers, middlewares, DTOs, mapeamento de erros, server.go
+migrations/               → migrations SQL versionadas (golang-migrate)
+docs/architecture/        → documentação arquitetural da Fase 3 (Mermaid, RFCs, ADRs)
+docs/                     → Swagger gerado
+k8s/base + k8s/overlays/  → manifestos Kubernetes (kustomize): prod e homolog
+load/                     → script k6 para demonstrar o HPA
+.github/workflows/        → CI (PR) e CD (homolog / main)
+```
 
 ## Testes
 
 ```bash
-# unitários (domínio + casos de uso + api)
-go test ./internal/domain/... ./internal/application/... ./internal/api/...
+# unitários (domínio + casos de uso + api + observabilidade)
+go test ./internal/domain/... ./internal/application/... ./internal/api/... ./internal/infrastructure/observability/...
 
 # integração (sobe PostgreSQL via testcontainers — requer Docker)
 go test ./internal/integration/... -timeout 300s
@@ -297,13 +349,11 @@ go test ./internal/integration/... -timeout 300s
 go test ./internal/... -coverprofile=coverage.out && go tool cover -func=coverage.out
 ```
 
-Cobertura atual: **~88%** (acima do mínimo de 80% exigido).
-
 ## CI/CD
 
-- **`ci.yml`** — em todo push/PR: `build`, `vet` e testes (unitários + integração). Não toca a AWS.
-- **`cd.yml`** — no push para `main`: autentica na AWS via **OIDC**, builda e publica a imagem no **ECR**, e faz o deploy no **EKS** (`kubectl apply -k`), incluindo metrics-server e o Secret da aplicação.
+- **`ci.yml`** — em todo Pull Request: `build`, `vet`, testes unitários e de integração, validação dos overlays kustomize e build da imagem Docker.
+- **`cd.yml`** — push em `homolog` ou `main`: autentica na AWS via **OIDC**, builda e publica a imagem no **ECR**, lê os segredos do **SSM** e faz o deploy no namespace do ambiente com `kubectl apply -k`.
 
 Configuração no GitHub (Settings → Secrets and variables → Actions):
 - **Variables:** `AWS_REGION`, `EKS_CLUSTER_NAME`, `ECR_REPOSITORY_URL`
-- **Secrets:** `AWS_ROLE_ARN`, `DATABASE_URL`, `JWT_SECRET`, `WEBHOOK_SECRET`, `RESEND_API_KEY`
+- **Secrets:** `AWS_ROLE_ARN` (role `oficina-api-app-github-actions`), `RESEND_API_KEY`, `NEW_RELIC_LICENSE_KEY`
