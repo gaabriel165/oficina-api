@@ -4,4 +4,7 @@ metadata:
   name: oficina-api-config
 data:
   SERVER_PORT: "8080"
+  APP_ENV: "production"
   EMAIL_FROM: "onboarding@resend.dev"
+  OTEL_SERVICE_NAME: "oficina-api"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "https://otlp.nr-data.net:4318"
