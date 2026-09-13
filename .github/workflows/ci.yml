@@ -21,7 +21,7 @@ jobs:
         run: go vet ./...
 
       - name: Unit tests
-        run: go test ./internal/domain/... ./internal/application/... ./internal/api/... ./internal/infrastructure/observability/...
+        run: go test $(go list ./internal/... | grep -v /internal/integration)
 
       - name: Integration tests
         run: go test ./internal/integration/... -timeout 300s
