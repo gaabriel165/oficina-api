@@ -2,6 +2,7 @@ package observability
 
 import (
 	"context"
+	"net/url"
 	"strings"
 
 	"go.opentelemetry.io/otel"
@@ -29,8 +30,13 @@ func SetupTracing(ctx context.Context, cfg TracingConfig) (func(context.Context)
 		return func(context.Context) error { return nil }, nil
 	}
 
+	endpoint, err := tracesEndpoint(cfg.Endpoint)
+	if err != nil {
+		return nil, err
+	}
+
 	exporter, err := otlptracehttp.New(ctx,
-		otlptracehttp.WithEndpointURL(cfg.Endpoint),
+		otlptracehttp.WithEndpointURL(endpoint),
 		otlptracehttp.WithHeaders(parseHeaders(cfg.Headers)),
 	)
 	if err != nil {
@@ -73,4 +79,15 @@ func parseHeaders(raw string) map[string]string {
 		headers[key] = value
 	}
 	return headers
+}
+
+func tracesEndpoint(raw string) (string, error) {
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		return "", err
+	}
+	if parsed.Path == "" || parsed.Path == "/" {
+		parsed.Path = "/v1/traces"
+	}
+	return parsed.String(), nil
 }
