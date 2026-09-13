@@ -4,7 +4,8 @@ set -euo pipefail
 : "${NEW_RELIC_API_KEY:?user API key (NRAK-...)}"
 : "${NEW_RELIC_ACCOUNT_ID:?account id}"
 : "${ALERT_EMAIL:?e-mail that receives alerts}"
-: "${HEALTH_URL:?public health url, e.g. https://xyz.execute-api.us-east-1.amazonaws.com/health}"
+HEALTH_URL="${HEALTH_URL:-}"
+ONLY_SYNTHETICS="${ONLY_SYNTHETICS:-false}"
 
 ENDPOINT="https://api.newrelic.com/graphql"
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -25,6 +26,25 @@ fail_on_errors() {
     exit 1
   fi
 }
+
+create_synthetics() {
+  echo "==> Synthetics ping monitor"
+  RESPONSE="$(graphql 'mutation($accountId: Int!, $url: String!) {
+    syntheticsCreateSimpleMonitor(accountId: $accountId, monitor: {
+      name: "oficina-api-health", uri: $url, period: EVERY_5_MINUTES, status: ENABLED,
+      locations: { public: ["US_EAST_1"] },
+      advancedOptions: { shouldBypassHeadRequest: true, responseValidationText: "ok" }
+    }) { monitor { guid } errors { description type } }
+  }' "$(jq -n --argjson id "$NEW_RELIC_ACCOUNT_ID" --arg u "$HEALTH_URL" '{accountId: $id, url: $u}')")"
+  fail_on_errors "$RESPONSE" synthetics
+  echo "monitor: $(echo "$RESPONSE" | jq -r '.data.syntheticsCreateSimpleMonitor.monitor.guid')"
+}
+
+if [ "$ONLY_SYNTHETICS" = "true" ]; then
+  : "${HEALTH_URL:?HEALTH_URL is required with ONLY_SYNTHETICS=true}"
+  create_synthetics
+  exit 0
+fi
 
 echo "==> Dashboard"
 DASHBOARD="$(sed "s/ACCOUNT_ID/$NEW_RELIC_ACCOUNT_ID/g" "$HERE/dashboard.json")"
@@ -102,16 +122,11 @@ RESPONSE="$(graphql 'mutation($accountId: Int!, $policyId: String!, $channelId: 
 fail_on_errors "$RESPONSE" workflow
 echo "workflow: $(echo "$RESPONSE" | jq -r '.data.aiWorkflowsCreateWorkflow.workflow.id')"
 
-echo "==> Synthetics ping monitor"
-RESPONSE="$(graphql 'mutation($accountId: Int!, $url: String!) {
-  syntheticsCreateSimpleMonitor(accountId: $accountId, monitor: {
-    name: "oficina-api-health", uri: $url, period: EVERY_5_MINUTES, status: ENABLED,
-    locations: { public: ["US_EAST_1"] },
-    advancedOptions: { shouldBypassHeadRequest: true, responseValidationText: "ok" }
-  }) { monitor { guid } errors { description type } }
-}' "$(jq -n --argjson id "$NEW_RELIC_ACCOUNT_ID" --arg u "$HEALTH_URL" '{accountId: $id, url: $u}')")"
-fail_on_errors "$RESPONSE" synthetics
-echo "monitor: $(echo "$RESPONSE" | jq -r '.data.syntheticsCreateSimpleMonitor.monitor.guid')"
+if [ -n "$HEALTH_URL" ]; then
+  create_synthetics
+else
+  echo "==> HEALTH_URL not set: skipping Synthetics monitor (run later with ONLY_SYNTHETICS=true HEALTH_URL=...)"
+fi
 
 echo
 echo "Done. Dashboard: https://one.newrelic.com/dashboards/detail/$DASHBOARD_GUID"

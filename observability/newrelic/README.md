@@ -15,10 +15,14 @@ Assets de monitoramento versionados como código. Aplicados uma vez por conta co
 export NEW_RELIC_API_KEY=NRAK-...          # User API key
 export NEW_RELIC_ACCOUNT_ID=1234567
 export ALERT_EMAIL=voce@exemplo.com
-export HEALTH_URL=https://<api-id>.execute-api.us-east-1.amazonaws.com/health
-
 ./observability/newrelic/setup.sh
+
+# depois que o API Gateway existir, só o monitor de uptime:
+ONLY_SYNTHETICS=true HEALTH_URL=https://<api-id>.execute-api.us-east-1.amazonaws.com/health \
+  ./observability/newrelic/setup.sh
 ```
+
+`HEALTH_URL` é opcional na primeira execução: sem ela o monitor Synthetics é pulado e pode ser criado depois com `ONLY_SYNTHETICS=true`.
 
 Cria:
 
