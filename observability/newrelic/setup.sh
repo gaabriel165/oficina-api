@@ -75,7 +75,7 @@ create_condition() {
       condition: {
         name: $n, enabled: true,
         nrql: { query: $q },
-        signal: { aggregationWindow: 60, aggregationMethod: "EVENT_FLOW", aggregationDelay: 120 },
+        signal: { aggregationWindow: 60, aggregationMethod: "CADENCE", aggregationDelay: 120 },
         terms: [{ threshold: $t, thresholdOccurrences: "AT_LEAST_ONCE", thresholdDuration: $d, operator: "ABOVE", priority: "CRITICAL" }],
         violationTimeLimitSeconds: 3600
       }
