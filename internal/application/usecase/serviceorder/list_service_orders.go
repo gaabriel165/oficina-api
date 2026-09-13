@@ -29,6 +29,28 @@ func (u *ListServiceOrdersUseCase) Execute() ([]*entity.ServiceOrder, error) {
 		return nil, err
 	}
 
+	sortByUrgency(orders)
+	return orders, nil
+}
+
+func (u *ListServiceOrdersUseCase) ExecuteForCustomer(customerID string) ([]*entity.ServiceOrder, error) {
+	orders, err := u.orderRepo.FindByStatuses(activeListingStatuses)
+	if err != nil {
+		return nil, err
+	}
+
+	owned := make([]*entity.ServiceOrder, 0, len(orders))
+	for _, order := range orders {
+		if order.CustomerID() == customerID {
+			owned = append(owned, order)
+		}
+	}
+
+	sortByUrgency(owned)
+	return owned, nil
+}
+
+func sortByUrgency(orders []*entity.ServiceOrder) {
 	sort.SliceStable(orders, func(i, j int) bool {
 		left, right := orders[i], orders[j]
 		if left.Status().ListingPriority() != right.Status().ListingPriority() {
@@ -36,6 +58,4 @@ func (u *ListServiceOrdersUseCase) Execute() ([]*entity.ServiceOrder, error) {
 		}
 		return left.CreatedAt().Before(right.CreatedAt())
 	})
-
-	return orders, nil
 }

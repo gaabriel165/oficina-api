@@ -38,8 +38,9 @@ func (u *LoginUseCase) Execute(input LoginInput) (*LoginOutput, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub": user.ID(),
-		"exp": time.Now().Add(24 * time.Hour).Unix(),
+		"sub":  user.ID(),
+		"role": "operator",
+		"exp":  time.Now().Add(24 * time.Hour).Unix(),
 	})
 
 	signed, err := token.SignedString([]byte(u.jwtSecret))

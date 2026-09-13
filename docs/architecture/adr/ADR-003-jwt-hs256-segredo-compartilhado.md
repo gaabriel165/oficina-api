@@ -21,6 +21,10 @@ Passam a existir três componentes que precisam **emitir ou verificar** o mesmo 
 - O mesmo padrão vale para `/oficina-api/webhook_secret` e `/oficina-api/database_url`.
 - Nenhum segredo é armazenado em GitHub Secrets além das chaves de terceiros (Resend, New Relic).
 
+## Autorização por papel
+
+O token carrega a claim `role` (`operator` no login por e-mail e senha, `customer` na Lambda de CPF; tokens sem a claim são tratados como `operator` por compatibilidade). O middleware `RequireRole` da camada de API restringe as rotas administrativas e as transições operacionais a operadores; clientes acessam apenas a listagem e a consulta das próprias ordens de serviço e a aprovação ou recusa do próprio orçamento, com a checagem de dono feita no caso de uso (`ExecuteForCustomer`). Assim, autenticação e autorização ficam desacopladas: a Lambda prova quem é o cliente, a aplicação decide o que ele pode fazer.
+
 ## Consequências
 
 **Positivas**

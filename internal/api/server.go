@@ -149,17 +149,19 @@ func (s *Server) registerRoutes() {
 	s.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
 	v1 := s.router.Group("/api/v1")
-	protected := v1.Group("", middleware.Auth(s.config.JWTSecret))
+	authenticated := v1.Group("", middleware.Auth(s.config.JWTSecret))
+	operators := authenticated.Group("", middleware.RequireRole(middleware.RoleOperator))
 	webhook := v1.Group("", middleware.WebhookAuth(s.config.WebhookSecret))
 
 	authHandler.RegisterRoutes(v1)
 	orderHandler.RegisterPublicRoutes(v1)
 	orderHandler.RegisterWebhookRoutes(webhook)
-	customerHandler.RegisterRoutes(protected)
-	vehicleHandler.RegisterRoutes(protected)
-	partHandler.RegisterRoutes(protected)
-	serviceHandler.RegisterRoutes(protected)
-	orderHandler.RegisterRoutes(protected)
+	orderHandler.RegisterSharedRoutes(authenticated)
+	orderHandler.RegisterOperatorRoutes(operators)
+	customerHandler.RegisterRoutes(operators)
+	vehicleHandler.RegisterRoutes(operators)
+	partHandler.RegisterRoutes(operators)
+	serviceHandler.RegisterRoutes(operators)
 }
 
 func (s *Server) health(c *gin.Context) {

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gabrielcamargo/oficina-api/internal/application/mocks"
+	"github.com/gabrielcamargo/oficina-api/internal/application/usecase"
 	"github.com/gabrielcamargo/oficina-api/internal/application/usecase/serviceorder"
 	"github.com/gabrielcamargo/oficina-api/internal/domain/entity"
 	"github.com/gabrielcamargo/oficina-api/internal/domain/repository"
@@ -423,4 +424,41 @@ func TestRejectBudget_ShouldReturnErrorOnInvalidTransition(t *testing.T) {
 	_, err := uc.Execute("order-id")
 
 	assert.ErrorIs(t, err, entity.ErrServiceOrderInvalidTransition)
+}
+
+func TestListServiceOrdersForCustomer_ShouldReturnOnlyOwnedOrders(t *testing.T) {
+	orderRepo := mocks.NewMockServiceOrderRepository(t)
+	mine, _ := entity.NewServiceOrder("customer-1", "vehicle-1", "")
+	other, _ := entity.NewServiceOrder("customer-2", "vehicle-2", "")
+	orderRepo.On("FindByStatuses", mock.Anything).Return([]*entity.ServiceOrder{other, mine}, nil)
+
+	uc := serviceorder.NewListServiceOrdersUseCase(orderRepo)
+	result, err := uc.ExecuteForCustomer("customer-1")
+
+	assert.NoError(t, err)
+	assert.Len(t, result, 1)
+	assert.Equal(t, mine.ID(), result[0].ID())
+}
+
+func TestGetServiceOrderForCustomer_ShouldReturnOrderWhenOwned(t *testing.T) {
+	orderRepo := mocks.NewMockServiceOrderRepository(t)
+	order, _ := entity.NewServiceOrder("customer-1", "vehicle-1", "")
+	orderRepo.On("FindByID", order.ID()).Return(order, nil)
+
+	uc := serviceorder.NewGetServiceOrderUseCase(orderRepo)
+	result, err := uc.ExecuteForCustomer(order.ID(), "customer-1")
+
+	assert.NoError(t, err)
+	assert.Equal(t, order.ID(), result.ID())
+}
+
+func TestGetServiceOrderForCustomer_ShouldReturnForbiddenWhenNotOwned(t *testing.T) {
+	orderRepo := mocks.NewMockServiceOrderRepository(t)
+	order, _ := entity.NewServiceOrder("customer-1", "vehicle-1", "")
+	orderRepo.On("FindByID", order.ID()).Return(order, nil)
+
+	uc := serviceorder.NewGetServiceOrderUseCase(orderRepo)
+	_, err := uc.ExecuteForCustomer(order.ID(), "customer-2")
+
+	assert.ErrorIs(t, err, usecase.ErrForbidden)
 }

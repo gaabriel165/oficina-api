@@ -4,8 +4,10 @@ import (
 	"net/http"
 
 	"github.com/gabrielcamargo/oficina-api/internal/api/dto"
+	"github.com/gabrielcamargo/oficina-api/internal/api/middleware"
 	"github.com/gabrielcamargo/oficina-api/internal/api/response"
 	"github.com/gabrielcamargo/oficina-api/internal/application/usecase/serviceorder"
+	"github.com/gabrielcamargo/oficina-api/internal/domain/entity"
 	"github.com/gin-gonic/gin"
 )
 
@@ -54,19 +56,34 @@ func NewServiceOrderHandler(
 	}
 }
 
-func (h *ServiceOrderHandler) RegisterRoutes(router *gin.RouterGroup) {
+func (h *ServiceOrderHandler) RegisterOperatorRoutes(router *gin.RouterGroup) {
 	router.GET("/service-orders/metrics", h.GetMetrics)
 	router.POST("/service-orders", h.Create)
-	router.GET("/service-orders", h.List)
-	router.GET("/service-orders/:id", h.Get)
 	router.POST("/service-orders/:id/services", h.AddService)
 	router.POST("/service-orders/:id/parts", h.AddPart)
 	router.PATCH("/service-orders/:id/start-diagnosis", h.StartDiagnosis)
 	router.PATCH("/service-orders/:id/send-budget", h.SendBudget)
-	router.PATCH("/service-orders/:id/approve-budget", h.ApproveBudget)
-	router.PATCH("/service-orders/:id/reject-budget", h.RejectBudget)
 	router.PATCH("/service-orders/:id/finish-execution", h.FinishExecution)
 	router.PATCH("/service-orders/:id/deliver", h.DeliverVehicle)
+}
+
+func (h *ServiceOrderHandler) RegisterSharedRoutes(router *gin.RouterGroup) {
+	router.GET("/service-orders", h.List)
+	router.GET("/service-orders/:id", h.Get)
+	router.PATCH("/service-orders/:id/approve-budget", h.ApproveBudget)
+	router.PATCH("/service-orders/:id/reject-budget", h.RejectBudget)
+}
+
+func (h *ServiceOrderHandler) ensureCustomerOwnsOrder(c *gin.Context) bool {
+	subject, role := middleware.Principal(c)
+	if role != middleware.RoleCustomer {
+		return true
+	}
+	if _, err := h.getUC.ExecuteForCustomer(c.Param("id"), subject); err != nil {
+		response.Error(c, err)
+		return false
+	}
+	return true
 }
 
 func (h *ServiceOrderHandler) RegisterPublicRoutes(router *gin.RouterGroup) {
@@ -161,15 +178,24 @@ func (h *ServiceOrderHandler) Create(c *gin.Context) {
 
 // Get godoc
 // @Summary      Get a service order by ID
+// @Description  Operators can read any order; customers authenticated by CPF can only read their own.
 // @Tags         service-orders
 // @Security     BearerAuth
 // @Produce      json
 // @Param        id  path      string  true  "Service Order ID"
 // @Success      200  {object}  dto.ServiceOrderResponse
+// @Failure      403  {object}  response.ErrorResponse
 // @Failure      404  {object}  response.ErrorResponse
 // @Router       /service-orders/{id} [get]
 func (h *ServiceOrderHandler) Get(c *gin.Context) {
-	result, err := h.getUC.Execute(c.Param("id"))
+	subject, role := middleware.Principal(c)
+	var result *entity.ServiceOrder
+	var err error
+	if role == middleware.RoleCustomer {
+		result, err = h.getUC.ExecuteForCustomer(c.Param("id"), subject)
+	} else {
+		result, err = h.getUC.Execute(c.Param("id"))
+	}
 	if err != nil {
 		response.Error(c, err)
 		return
@@ -178,14 +204,22 @@ func (h *ServiceOrderHandler) Get(c *gin.Context) {
 }
 
 // List godoc
-// @Summary      List all service orders
+// @Summary      List active service orders
+// @Description  Operators see every active order sorted by urgency; customers authenticated by CPF see only their own.
 // @Tags         service-orders
 // @Security     BearerAuth
 // @Produce      json
 // @Success      200  {array}   dto.ServiceOrderResponse
 // @Router       /service-orders [get]
 func (h *ServiceOrderHandler) List(c *gin.Context) {
-	results, err := h.listUC.Execute()
+	subject, role := middleware.Principal(c)
+	var results []*entity.ServiceOrder
+	var err error
+	if role == middleware.RoleCustomer {
+		results, err = h.listUC.ExecuteForCustomer(subject)
+	} else {
+		results, err = h.listUC.Execute()
+	}
 	if err != nil {
 		response.Error(c, err)
 		return
@@ -294,6 +328,7 @@ func (h *ServiceOrderHandler) SendBudget(c *gin.Context) {
 
 // ApproveBudget godoc
 // @Summary      Approve the budget and start execution
+// @Description  Customers authenticated by CPF can only approve their own order.
 // @Tags         service-orders
 // @Security     BearerAuth
 // @Produce      json
@@ -303,12 +338,16 @@ func (h *ServiceOrderHandler) SendBudget(c *gin.Context) {
 // @Failure      422  {object}  response.ErrorResponse
 // @Router       /service-orders/{id}/approve-budget [patch]
 func (h *ServiceOrderHandler) ApproveBudget(c *gin.Context) {
+	if !h.ensureCustomerOwnsOrder(c) {
+		return
+	}
 	result, err := h.approveUC.Execute(c.Param("id"))
 	respondOrderTransition(c, "approve_budget", result, err)
 }
 
 // RejectBudget godoc
 // @Summary      Reject the budget and cancel the order
+// @Description  Customers authenticated by CPF can only reject their own order.
 // @Tags         service-orders
 // @Security     BearerAuth
 // @Produce      json
@@ -318,6 +357,9 @@ func (h *ServiceOrderHandler) ApproveBudget(c *gin.Context) {
 // @Failure      422  {object}  response.ErrorResponse
 // @Router       /service-orders/{id}/reject-budget [patch]
 func (h *ServiceOrderHandler) RejectBudget(c *gin.Context) {
+	if !h.ensureCustomerOwnsOrder(c) {
+		return
+	}
 	result, err := h.rejectUC.Execute(c.Param("id"))
 	respondOrderTransition(c, "reject_budget", result, err)
 }
