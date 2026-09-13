@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/gabrielcamargo/oficina-api/internal/domain/entity"
+	"github.com/gabrielcamargo/oficina-api/internal/domain/valueobject"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -68,4 +69,24 @@ func TestCustomer_Update_ShouldReturnErrorWhenEmailEmpty(t *testing.T) {
 	customer, _ := entity.NewCustomer("John Doe", "529.982.247-25", "11999999999", "john@email.com")
 	err := customer.Update("Jane Doe", "11988888888", "")
 	assert.ErrorIs(t, err, entity.ErrCustomerEmailRequired)
+}
+
+func TestNewCustomer_ShouldStartActive(t *testing.T) {
+	customer, err := entity.NewCustomer("John Doe", "529.982.247-25", "11999999999", "john@email.com")
+	assert.NoError(t, err)
+	assert.True(t, customer.IsActive())
+}
+
+func TestCustomerDeactivate_ShouldChangeStatusToInactive(t *testing.T) {
+	customer, _ := entity.NewCustomer("John Doe", "529.982.247-25", "11999999999", "john@email.com")
+	customer.Deactivate()
+	assert.False(t, customer.IsActive())
+	assert.Equal(t, valueobject.CustomerStatusInactive, customer.Status())
+}
+
+func TestCustomerActivate_ShouldChangeStatusToActive(t *testing.T) {
+	customer, _ := entity.NewCustomer("John Doe", "529.982.247-25", "11999999999", "john@email.com")
+	customer.Deactivate()
+	customer.Activate()
+	assert.True(t, customer.IsActive())
 }

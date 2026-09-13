@@ -13,6 +13,7 @@ type CustomerModel struct {
 	DocumentType string    `gorm:"type:varchar(4);not null;column:document_type"`
 	Phone        string    `gorm:"type:varchar(20);not null;column:phone"`
 	Email        string    `gorm:"type:varchar(255);not null;column:email"`
+	Status       string    `gorm:"type:varchar(20);not null;column:status"`
 	CreatedAt    time.Time `gorm:"column:created_at"`
 	UpdatedAt    time.Time `gorm:"column:updated_at"`
 }
@@ -20,7 +21,7 @@ type CustomerModel struct {
 func (CustomerModel) TableName() string { return "customers" }
 
 func (m *CustomerModel) ToDomain() *entity.Customer {
-	return entity.RestoreCustomer(m.ID, m.Name, m.DocumentType, m.Document, m.Phone, m.Email, m.CreatedAt, m.UpdatedAt)
+	return entity.RestoreCustomer(m.ID, m.Name, m.DocumentType, m.Document, m.Phone, m.Email, m.Status, m.CreatedAt, m.UpdatedAt)
 }
 
 func CustomerModelFromDomain(c *entity.Customer) *CustomerModel {
@@ -31,6 +32,7 @@ func CustomerModelFromDomain(c *entity.Customer) *CustomerModel {
 		DocumentType: string(c.DocumentType()),
 		Phone:        c.Phone(),
 		Email:        c.Email(),
+		Status:       c.Status().String(),
 		CreatedAt:    c.CreatedAt(),
 		UpdatedAt:    c.UpdatedAt(),
 	}

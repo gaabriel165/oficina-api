@@ -76,6 +76,7 @@ func statusFromError(err error) int {
 		valueobject.ErrInvalidCPF,
 		valueobject.ErrInvalidCNPJ,
 		valueobject.ErrInvalidPlate,
+		valueobject.ErrInvalidCustomerStatus,
 	}
 	for _, e := range unprocessable {
 		if errors.Is(err, e) {
