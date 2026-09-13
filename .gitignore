@@ -21,5 +21,15 @@ vendor/
 coverage.out
 coverage.html
 
+# Terraform (moved to oficina-infra-k8s / oficina-infra-db)
+infra/
+
+# Local working documents
+docs/roadmap-*.md
+docs/infra-guia-pessoal.md
+docs/roteiro-video-*.md
+docs/entrega*.html
+*.pdf
+
 # AI tooling
 CLAUDE.md

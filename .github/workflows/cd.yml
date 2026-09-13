@@ -2,54 +2,99 @@ name: CD
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "homolog"]
   workflow_dispatch:
 
 permissions:
   id-token: write
   contents: read
 
+concurrency:
+  group: cd-${{ github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  ECR_REPOSITORY_URL: ${{ vars.ECR_REPOSITORY_URL }}
+  EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME }}
+  SSM_PREFIX: /oficina-api
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'production' || 'homolog' }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Resolve target environment
+        id: target
+        run: |
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+            echo "overlay=prod" >> "$GITHUB_OUTPUT"
+            echo "namespace=oficina-api" >> "$GITHUB_OUTPUT"
+          else
+            echo "overlay=homolog" >> "$GITHUB_OUTPUT"
+            echo "namespace=oficina-api-homolog" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build and push image
         env:
-          IMAGE: ${{ vars.ECR_REPOSITORY_URL }}:${{ github.sha }}
+          IMAGE: ${{ env.ECR_REPOSITORY_URL }}:${{ github.sha }}
         run: |
           docker build -t "$IMAGE" .
           docker push "$IMAGE"
 
       - name: Update kubeconfig
-        run: aws eks update-kubeconfig --name "${{ vars.EKS_CLUSTER_NAME }}" --region "${{ vars.AWS_REGION }}"
+        run: aws eks update-kubeconfig --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION"
 
-      - name: Install metrics-server
-        run: kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
-
-      - name: Create namespace and application secret
+      - name: Create namespace and application secret from SSM
+        env:
+          NAMESPACE: ${{ steps.target.outputs.namespace }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          NEW_RELIC_LICENSE_KEY: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
         run: |
-          kubectl create namespace oficina-api --dry-run=client -o yaml | kubectl apply -f -
+          DATABASE_URL="$(aws ssm get-parameter --name "$SSM_PREFIX/database_url" --with-decryption --query Parameter.Value --output text)"
+          JWT_SECRET="$(aws ssm get-parameter --name "$SSM_PREFIX/jwt_secret" --with-decryption --query Parameter.Value --output text)"
+          WEBHOOK_SECRET="$(aws ssm get-parameter --name "$SSM_PREFIX/webhook_secret" --with-decryption --query Parameter.Value --output text)"
+
+          kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
           kubectl create secret generic oficina-api-secrets \
-            --namespace oficina-api \
-            --from-literal=DATABASE_URL="${{ secrets.DATABASE_URL }}" \
-            --from-literal=JWT_SECRET="${{ secrets.JWT_SECRET }}" \
-            --from-literal=WEBHOOK_SECRET="${{ secrets.WEBHOOK_SECRET }}" \
-            --from-literal=RESEND_API_KEY="${{ secrets.RESEND_API_KEY }}" \
+            --namespace "$NAMESPACE" \
+            --from-literal=DATABASE_URL="$DATABASE_URL" \
+            --from-literal=JWT_SECRET="$JWT_SECRET" \
+            --from-literal=WEBHOOK_SECRET="$WEBHOOK_SECRET" \
+            --from-literal=RESEND_API_KEY="$RESEND_API_KEY" \
+            --from-literal=OTEL_EXPORTER_OTLP_HEADERS="api-key=$NEW_RELIC_LICENSE_KEY" \
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Deploy to EKS
+        env:
+          OVERLAY: ${{ steps.target.outputs.overlay }}
+          NAMESPACE: ${{ steps.target.outputs.namespace }}
         run: |
-          sed -i "s|ECR_REPOSITORY_URL|${{ vars.ECR_REPOSITORY_URL }}|; s|newTag: latest|newTag: ${{ github.sha }}|" k8s/kustomization.yaml
-          kubectl apply -k k8s/
-          kubectl rollout status deployment/oficina-api --namespace oficina-api --timeout=300s
+          cd k8s/base
+          kustomize edit set image "oficina-api=$ECR_REPOSITORY_URL:${GITHUB_SHA}"
+          cd ../..
+          kubectl apply -k "k8s/overlays/$OVERLAY"
+          kubectl rollout status deployment/oficina-api --namespace "$NAMESPACE" --timeout=300s
+
+      - name: Summary
+        env:
+          NAMESPACE: ${{ steps.target.outputs.namespace }}
+        run: |
+          {
+            echo "### Deployed \`${GITHUB_SHA::7}\` to \`$NAMESPACE\`"
+            echo
+            echo '```'
+            kubectl get deploy,hpa,svc -n "$NAMESPACE"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

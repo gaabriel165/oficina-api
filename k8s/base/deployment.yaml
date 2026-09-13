@@ -14,11 +14,13 @@ spec:
       labels:
         app: oficina-api
     spec:
+      terminationGracePeriodSeconds: 20
       containers:
         - name: api
           image: oficina-api
           ports:
             - containerPort: 8080
+              name: http
           envFrom:
             - configMapRef:
                 name: oficina-api-config
@@ -34,18 +36,17 @@ spec:
           startupProbe:
             httpGet:
               path: /health
-              port: 8080
+              port: http
             periodSeconds: 5
             failureThreshold: 30
           readinessProbe:
             httpGet:
-              path: /health
-              port: 8080
-            initialDelaySeconds: 5
+              path: /ready
+              port: http
             periodSeconds: 10
           livenessProbe:
             httpGet:
               path: /health
-              port: 8080
+              port: http
             initialDelaySeconds: 15
             periodSeconds: 20
