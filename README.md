@@ -154,6 +154,13 @@ Dois emissores produzem o **mesmo JWT HS256**, assinado com o segredo único gua
 
 As rotas sob `/api/v1/*` são protegidas em **duas camadas**: o **Lambda authorizer** do API Gateway rejeita tokens inválidos na borda (401) e o middleware `Auth` da aplicação valida de novo (defesa em profundidade). Rotas públicas: `/health`, `/ready`, `/swagger/*`, `POST /api/v1/auth/login|register`, `GET /api/v1/service-orders/{id}/status` e o webhook `POST /api/v1/service-orders/{id}/budget-approval` (protegido por `X-Webhook-Secret`).
 
+O token carrega a claim `role`, e a aplicação autoriza por papel:
+
+| Papel | Emissor | Pode |
+|---|---|---|
+| `operator` | `POST /api/v1/auth/login` | Todas as rotas |
+| `customer` | `POST /auth/cpf` (Lambda) | Listar e consultar **apenas as próprias** ordens de serviço, aprovar ou recusar **o próprio** orçamento. Qualquer outra rota responde **403** |
+
 Clientes podem ser desativados com `PATCH /api/v1/customers/{id}/status` (`{"status":"inactive"}`); a Lambda passa a responder **403** para o CPF. Detalhes em [RFC-003](./docs/architecture/rfc/RFC-003-estrategia-de-autenticacao.md) e [ADR-003](./docs/architecture/adr/ADR-003-jwt-hs256-segredo-compartilhado.md).
 
 ## Observabilidade (New Relic)
@@ -306,14 +313,15 @@ curl -s "$GW/api/v1/service-orders" -H "Authorization: Bearer $TOKEN"
 | Método | Caminho | Descrição |
 |---|---|---|
 | POST | `/api/v1/service-orders` | Abrir OS (cliente, veículo, serviços e peças na mesma chamada) |
-| GET | `/api/v1/service-orders` | Listar OS ativas ordenadas por urgência |
-| GET | `/api/v1/service-orders/{id}` | Detalhar OS |
+| GET | `/api/v1/service-orders` | Listar OS ativas ordenadas por urgência (cliente vê só as suas) |
+| GET | `/api/v1/service-orders/{id}` | Detalhar OS (cliente só a própria) |
 | GET | `/api/v1/service-orders/metrics` | Tempo médio de execução por serviço |
 | POST | `/api/v1/service-orders/{id}/budget-approval` | **Webhook** de aprovação/recusa externa (`X-Webhook-Secret`) |
-| PATCH | `.../start-diagnosis` · `/send-budget` · `/approve-budget` · `/reject-budget` · `/finish-execution` · `/deliver` | Transições de status |
+| PATCH | `.../approve-budget` · `/reject-budget` | Decisão do orçamento (operador ou o próprio cliente) |
+| PATCH | `.../start-diagnosis` · `/send-budget` · `/finish-execution` · `/deliver` | Transições operacionais (só operador) |
 | POST | `/api/v1/service-orders/{id}/services` · `/parts` | Adicionar serviço / peça |
 
-### CRUDs administrativos (JWT)
+### CRUDs administrativos (JWT de operador)
 `/api/v1/customers` (+ `PATCH /{id}/status`), `/api/v1/vehicles`, `/api/v1/parts` (+ `PATCH /{id}/stock`), `/api/v1/services` — todos com `GET` (lista), `POST`, `GET/{id}`, `PUT/{id}`, `DELETE/{id}`.
 
 ---
