@@ -321,6 +321,16 @@ curl -s "$GW/api/v1/service-orders" -H "Authorization: Bearer $TOKEN"
 | PATCH | `.../start-diagnosis` · `/send-budget` · `/finish-execution` · `/deliver` | Transições operacionais (só operador) |
 | POST | `/api/v1/service-orders/{id}/services` · `/parts` | Adicionar serviço / peça |
 
+### Roteamento no API Gateway
+| Rota | Autenticação na borda | Destino |
+|---|---|---|
+| `POST /auth/cpf` | nenhuma | Lambda `auth-cpf` |
+| `GET /health`, `GET /swagger/{proxy+}` | nenhuma | EKS (proxy HTTP) |
+| `POST /api/v1/auth/login`, `POST /api/v1/auth/register` | nenhuma | EKS |
+| `GET /api/v1/service-orders/{id}/status` | nenhuma | EKS |
+| `POST /api/v1/service-orders/{id}/budget-approval` | `X-Webhook-Secret` (na aplicação) | EKS |
+| `ANY /api/v1/{proxy+}` | Lambda authorizer (JWT HS256) | EKS |
+
 ### CRUDs administrativos (JWT de operador)
 `/api/v1/customers` (+ `PATCH /{id}/status`), `/api/v1/vehicles`, `/api/v1/parts` (+ `PATCH /{id}/stock`), `/api/v1/services` — todos com `GET` (lista), `POST`, `GET/{id}`, `PUT/{id}`, `DELETE/{id}`.
 
