@@ -13,4 +13,4 @@ k6 run -e BASE_URL=http://<nlb-host> load/load-test.js
 kubectl get hpa -n oficina-api -w
 ```
 
-Rampa: 10 → 30 → 60 usuários virtuais em 4,5 minutos. Cada iteração lista OS, consulta métricas e faz um login (bcrypt consome CPU).
+Rampa: 10 → 30 → 60 usuários virtuais em 4,5 minutos. Cada iteração lista OS como cliente (token da Lambda de CPF, só as próprias) e como operador, consulta métricas como operador e faz um login (bcrypt consome CPU).

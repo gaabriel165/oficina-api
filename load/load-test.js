@@ -22,24 +22,29 @@ export const options = {
 const jsonHeaders = { "Content-Type": "application/json" };
 
 export function setup() {
-  const byCpf = http.post(`${BASE}/auth/cpf`, JSON.stringify({ cpf: CPF }), { headers: jsonHeaders });
-  if (byCpf.status === 200) {
-    return { token: byCpf.json("token"), issuer: "lambda auth-cpf" };
-  }
+  const operatorLogin = http.post(`${BASE}/api/v1/auth/login`, JSON.stringify({ email: EMAIL, password: PASSWORD }), { headers: jsonHeaders });
+  check(operatorLogin, { "operator login succeeded": (r) => r.status === 200 });
+  const operatorToken = operatorLogin.json("token");
 
-  const byLogin = http.post(`${BASE}/api/v1/auth/login`, JSON.stringify({ email: EMAIL, password: PASSWORD }), { headers: jsonHeaders });
-  check(byLogin, { "login succeeded": (r) => r.status === 200 });
-  return { token: byLogin.json("token"), issuer: "api login" };
+  const customerLogin = http.post(`${BASE}/auth/cpf`, JSON.stringify({ cpf: CPF }), { headers: jsonHeaders });
+  const customerToken = customerLogin.status === 200 ? customerLogin.json("token") : operatorToken;
+
+  return { operatorToken, customerToken, customerIssuer: customerLogin.status === 200 ? "lambda auth-cpf" : "operator fallback" };
+}
+
+function authHeaders(token) {
+  return { headers: { Authorization: `Bearer ${token}`, "X-Request-ID": `k6-${__VU}-${__ITER}` } };
 }
 
 export default function (data) {
-  const authHeaders = { headers: { Authorization: `Bearer ${data.token}`, "X-Request-ID": `k6-${__VU}-${__ITER}` } };
+  const customerOrders = http.get(`${BASE}/api/v1/service-orders`, authHeaders(data.customerToken));
+  check(customerOrders, { "customer lists own orders 200": (r) => r.status === 200 });
 
-  const orders = http.get(`${BASE}/api/v1/service-orders`, authHeaders);
-  check(orders, { "list orders 200": (r) => r.status === 200 });
+  const operatorOrders = http.get(`${BASE}/api/v1/service-orders`, authHeaders(data.operatorToken));
+  check(operatorOrders, { "operator lists orders 200": (r) => r.status === 200 });
 
-  const metrics = http.get(`${BASE}/api/v1/service-orders/metrics`, authHeaders);
-  check(metrics, { "metrics 200": (r) => r.status === 200 });
+  const metrics = http.get(`${BASE}/api/v1/service-orders/metrics`, authHeaders(data.operatorToken));
+  check(metrics, { "operator metrics 200": (r) => r.status === 200 });
 
   const login = http.post(`${BASE}/api/v1/auth/login`, JSON.stringify({ email: EMAIL, password: PASSWORD }), { headers: jsonHeaders });
   check(login, { "login 200": (r) => r.status === 200 });
@@ -48,5 +53,5 @@ export default function (data) {
 }
 
 export function teardown(data) {
-  console.log(`token issued by ${data.issuer}`);
+  console.log(`customer token issued by ${data.customerIssuer}`);
 }
