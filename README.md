@@ -26,7 +26,7 @@ Ordem de provisionamento: `oficina-infra-k8s` → `oficina-infra-db` → `oficin
 - **Swagger (com o ambiente no ar):** `https://<api-id>.execute-api.us-east-1.amazonaws.com/swagger/index.html` (via API Gateway) ou `http://<nlb-host>/swagger/index.html`
 - **Collection das APIs (Insomnia):** [`insomnia-collection.json`](./insomnia-collection.json)
 - **Documentação DDD (Event Storming, Fase 1):** [miro.com/app/board/uXjVHZWTzN0=/](https://miro.com/app/board/uXjVHZWTzN0=/)
-- **Vídeo Fase 2:** https://youtu.be/KcicodFkWag · **Vídeo Fase 3:** _a incluir_
+- **Vídeo Fase 2:** https://youtu.be/KcicodFkWag · **Vídeo Fase 3:** https://youtu.be/UpkiPBkgyVE
 
 > O ambiente AWS é **provisionado sob demanda** (custo por hora) e destruído após cada sessão de testes. Os links de deploy podem estar fora do ar no momento da avaliação; o vídeo demonstra o pipeline e o ambiente em execução.
 
